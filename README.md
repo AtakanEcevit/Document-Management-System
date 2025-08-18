@@ -1,44 +1,74 @@
-Öne çıkanlar: tek tık yükleme, otomatik özet/etiket/kategori, güçlü filtreler, detay sayfasında düzenleme, “yeniden analiz” ve inline PDF görüntüleme.
+# Özellikler
 
-Özellikler
 PDF Yükleme: Tek dosya yükle, hızlı kayıt.
+
 Otomatik Analiz: PDF’ten metin çıkarma → anahtar kelimeler, kısa özet, kategori (LLM destekli).
+
 Kütüphane Görünümü: Grid / liste; arama, kategori, tarih, etiket filtreleri; sıralama.
+
 Detay Sayfası: Etiket/özet/kategori düzenleme + tek Kaydet butonu; benzer dokümanlar paneli; “Yeniden analiz”.
+
 Inline Önizleme: PDF’i tarayıcı içinde aç veya indir.
+
 Öneriler: Otomatik kategori ve etiket (tag) önerileri.
+
 Sağlam Backend: FastAPI, PostgreSQL (psycopg pool), CORS, problem+json hata formatı.
 
-Mimari
+
+ # Mimari
+
 Frontend (Angular, PrimeNG)
+
  ├─ Pages: Library (listeleme/filtre), Detail (düzenleme/önizleme)
+ 
  └─ Services: ApiService (REST istemcisi)
 
 Backend (FastAPI)
+
  ├─ Routes: /api/v1
+ 
  │   ├─ GET  /health
+ 
  │   ├─ GET  /files                    (legacy list)
+ 
  │   ├─ POST /files                    (upload)
+ 
  │   ├─ GET  /files/{id}/download      (inline/attachment)
+ 
  │   ├─ GET  /documents                (paged list + filtre/sıralama)
+ 
  │   ├─ GET  /documents/{id}           (detay)
+ 
  │   ├─ PATCH /documents/{id}          (tags/summary/category)
+ 
  │   ├─ POST /documents/{id}/reanalyze (yeniden analiz)
+ 
  │   ├─ GET  /documents/suggest/categories
+ 
  │   └─ GET  /documents/suggest/tags
+ 
  └─ Services: pdf_utils, groq_utils, db_pg
+
 DB: PostgreSQL (psycopg_pool)
+
 Storage: Dosyalar (uploads/) + dosya yolu DB’de
 
-Ekranlar
+# Ekranlar
+
 Library: Arama/filtre, grid/liste, seç-çoklu analiz, CSV export, sağdan inline önizleme paneli.
+
 Detail: PDF viewer ortada, sol meta, sağda tab’ler (Etiketler / Özet / Özellikler).
+
 Üst barda tek “Kaydet” ve kısayollar (Ctrl+S, Ctrl+K, Zen vs).
 
-Kısayollar:
+# Kısayollar
+
 Ctrl+S Kaydet • Ctrl+K Komut paleti • / Arama alanına odak • ? Yardım
+
 Hızlı Başlangıç
+
 Docker ile Repo kökünde bir docker-compose.yml ile;
+
 # İlk kurulum / yeniden kurulum
 docker compose up --build
 
@@ -81,9 +111,8 @@ ALLOWED_ORIGINS=http://localhost:4200
 # LLM analiz için
 # GROQ_API_KEY=...
 
-Önemli notlar
-ALLOWED_ORIGINS: CORS için frontend adresini ekle.
-STORAGE_ROOT: yüklenen PDF’lerin saklanacağı klasör (container içinde kalıcı volume önerilir).
+# Önemli notlar
+ALLOWED_ORIGINS: CORS için frontend adresini ekle. STORAGE_ROOT: yüklenen PDF’lerin saklanacağı klasör (container içinde kalıcı volume önerilir).
 LLM analiz (özet/etiket/kategori) için groq_utils benzeri sağlayıcı anahtarını ayarla.
 API Referansı (özet)
 /api/v1 altında:
