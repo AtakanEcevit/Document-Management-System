@@ -1,0 +1,160 @@
+﻿/* ==============================
+   Design Tokens & Base
+   ============================== */
+:root {
+    /* Fluid typography */
+    --step--1: clamp(0.83rem, 0.78rem + 0.21vw, 0.94rem);
+    --step-0: clamp(1.00rem, 0.94rem + 0.31vw, 1.13rem);
+    --step-1: clamp(1.20rem, 1.09rem + 0.48vw, 1.35rem);
+    --step-2: clamp(1.44rem, 1.26rem + 0.71vw, 1.62rem);
+    --step-3: clamp(1.73rem, 1.47rem + 1.03vw, 1.94rem);
+    --step-4: clamp(2.07rem, 1.72rem + 1.48vw, 2.33rem);
+    /* Spacing */
+    --space-1: .25rem;
+    --space-2: .5rem;
+    --space-3: .75rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-12: 3rem;
+    /* Radius & shadow */
+    --radius-sm: .5rem;
+    --radius-md: .9rem;
+    --radius-lg: 1.25rem;
+    --shadow-1: 0 1px 2px rgba(0,0,0,.25), 0 10px 20px rgba(0,0,0,.15);
+    --shadow-2: 0 6px 18px rgba(0,0,0,.25), 0 12px 32px rgba(0,0,0,.25);
+    /* Layout */
+    --container: 1280px;
+}
+
+/* Dark gradient background (Prime lara-dark ile uyumlu) */
+html, body {
+    min-height: 100%;
+    background: radial-gradient(1200px 600px at 10% -10%, rgba(99,102,241,.18), transparent 60%), radial-gradient(1000px 500px at 90% 10%, rgba(16,185,129,.12), transparent 60%), linear-gradient(180deg, #0b0f17, #0f1524 40%, #0b0f17 100%);
+}
+
+/* Typography scale */
+h1 {
+    font-size: var(--step-4);
+    margin: 0 0 var(--space-2);
+}
+
+h2 {
+    font-size: var(--step-3);
+    margin: 0 0 var(--space-2);
+}
+
+h3 {
+    font-size: var(--step-2);
+    margin: 0 0 var(--space-2);
+}
+
+p, li {
+    font-size: var(--step-0);
+}
+
+/* Utilities */
+.container {
+    max-width: var(--container);
+    margin: 0 auto;
+    padding: var(--space-4);
+}
+
+.section {
+    padding: var(--space-8) 0;
+}
+
+.meta {
+    opacity: .75;
+}
+
+.card-surface {
+    background: rgba(255,255,255,.02);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-1);
+}
+
+/* Sticky blurred header */
+.app-header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    backdrop-filter: saturate(180%) blur(10px);
+    background: rgba(15, 17, 28, .65);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+/* Modern nav */
+.nav {
+    display: flex;
+    gap: .75rem;
+    align-items: center;
+}
+
+    .nav a {
+        padding: .5rem .75rem;
+        border-radius: .6rem;
+        text-decoration: none;
+        color: var(--text-color, #e5e7eb);
+        transition: background .2s ease, color .2s ease, transform .05s ease;
+    }
+
+        .nav a:hover {
+            background: rgba(255,255,255,.06);
+        }
+
+        .nav a.active {
+            background: linear-gradient(95deg, rgba(99,102,241,.25), rgba(56,189,248,.20));
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+        }
+
+/* Gradient text utility */
+.gradient-text {
+    background: linear-gradient(95deg, #a5b4fc, #34d399);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* Card grid */
+.grid-auto-fit {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-4);
+}
+
+/* Dropzone */
+.drop {
+    border: 1px dashed rgba(255,255,255,.18);
+    border-radius: var(--radius-lg);
+    padding: var(--space-8);
+    text-align: center;
+    display: grid;
+    gap: var(--space-2);
+    background: rgba(255,255,255,.02);
+    transition: border-color .2s ease, background .2s ease, transform .08s ease;
+}
+
+    .drop:hover {
+        transform: translateY(-1px);
+    }
+
+    .drop.dragging {
+        border-color: rgba(99,102,241,.6);
+        background: rgba(99,102,241,.08);
+    }
+
+/* Focus ring for a11y */
+:focus-visible {
+    outline: 2px solid rgba(99,102,241,.7);
+    outline-offset: 2px;
+    border-radius: .4rem;
+}
+
+/* === Detail sayfası scroll hotfix (global, güvenli) === */
+.p-splitter .p-splitter-panel {
+    min-height: 0 !important;
+}
+/* grid/flex çocukları kayabilsin */
+
