@@ -1,4 +1,4 @@
-﻿// src/app/services/sound.service.ts
+// src/app/services/sound.service.ts
 import { Injectable } from '@angular/core';
 
 type SoundName = 'send' | 'receive' | 'success' | 'error' | 'notify' | 'hover';
