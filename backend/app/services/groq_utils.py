@@ -42,7 +42,7 @@ def extract_keywords(text: str) -> Dict[str, Any]:
     }
     usr = {
         "role": "user",
-        "content": f"Metinden 5-12 arası anahtar kelime üret. Sadece virgülle ayrık liste döndür.\nMetin:\n{text}",
+        "content": f"Metinden 5-12 arası anahtar kelime üret. Cevabında sadece virgülle ayrık liste döndür, anahtar kelimeden başka bir cümle koyma. \nMetin:\n{text}",
     }
     raw = _chat([sys, usr]) or ""
     kws = [k.strip() for k in raw.replace("\n", " ").split(",") if k.strip()]
@@ -84,7 +84,7 @@ def predict_category(
     sys = {"role": "system", "content": "Belgeleri sınıflandır."}
     usr = {
         "role": "user",
-        "content": f"Metnin türünü tek kısa kategori adıyla döndür (ör: Contract, Invoice, Report). Sadece ad.\n\n{text}",
+        "content": f"Metnin türünü türkçe tek kısa kategori adıyla döndür (ör: Fatura, Özgeçmiş). Sadece ad.\n\n{text}",
     }
     raw = _chat([sys, usr]) or ""
     cat = next((ln.strip() for ln in raw.splitlines() if ln.strip()), fallback)
