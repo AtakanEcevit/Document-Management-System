@@ -1,26 +1,47 @@
-from typing import Optional
-from doctr.models import ocr_predictor
+# app/services/pdf_utils.py
+from typing import Optional, List
+from io import BytesIO
+
+import fitz  
 from doctr.io import DocumentFile
+from doctr.models import ocr_predictor
+
+
+def _export_to_text(export: dict) -> str:
+    """doctr OCR output -> düz metin"""
+    lines: List[str] = []
+    for page in export.get("pages", []):
+        for block in page.get("blocks", []):
+            for line in block.get("lines", []):
+                words = [w.get("value", "") for w in line.get("words", [])]
+                txt = " ".join(w for w in words if w).strip()
+                if txt:
+                    lines.append(txt)
+        # sayfa sonu için boş satır
+        if lines and lines[-1] != "":
+            lines.append("")
+    return "\n".join(lines).strip()
+
 
 def extract_text_from_pdf(file_bytes: bytes, max_pages: Optional[int] = None) -> str:
-    # Load OCR model
-    model = ocr_predictor(pretrained=True)
+    """
+    SADECE OCR: PDF -> (görüntüler) -> DocTR OCR -> metin.
+    - PyTorch tabanlı, önceden eğitili modeller kullanılır.
+    - max_pages verildiyse yalnız ilk N sayfa işlenir (performans için).
+    """
+    with fitz.open(stream=file_bytes, filetype="pdf") as pdf:
+        total = len(pdf)
+        limit = total if max_pages is None else min(total, max_pages)
 
-    # Load PDF from bytes
-    doc = DocumentFile.from_pdf(file_bytes)
+        doc = DocumentFile.from_pdf(BytesIO(file_bytes))
 
-    # Limit pages if needed
-    if max_pages is not None:
-        doc.pages = doc.pages[:max_pages]
+    if max_pages is not None and limit < len(doc):
+        images = doc.as_images()[:limit]  
+        doc = DocumentFile.from_images(images)
 
-    # Run OCR
-    result = model(doc)
+    predictor = ocr_predictor(pretrained=True, assume_straight_pages=True)
 
-    # Extract text from OCR result
-    extracted_text = []
-    for page in result.pages:
-        page_text = " ".join([block.value for block in page.blocks])
-        if page_text.strip():
-            extracted_text.append(page_text.strip())
-
-    return "\n\n".join(extracted_text).strip()
+    result = predictor(doc)          
+    export = result.export()         
+    text = _export_to_text(export)
+    return text
