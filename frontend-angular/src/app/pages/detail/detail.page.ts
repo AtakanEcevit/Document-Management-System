@@ -350,6 +350,9 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string
           </ng-template>
 
           <div class="viewer-toolbar">
+            <button class="btn" pTooltip="Yakınlaştır" (click)="zoomIn()"><i class="pi pi-search-plus"></i></button>
+            <button class="btn" pTooltip="Uzaklaştır" (click)="zoomOut()"><i class="pi pi-search-minus"></i></button>
+            <span class="badge">{{zoom}}%</span>
             <button class="btn" pTooltip="Yenile" (click)="reloadPdf()"><i class="pi pi-refresh"></i></button>
             <button class="btn" pTooltip="Tarayıcıda aç" (click)="openInNewTab()"><i class="pi pi-external-link"></i></button>
             <button class="btn" pTooltip="İndir" (click)="downloadPdf()"><i class="pi pi-download"></i></button>
@@ -531,12 +534,18 @@ export class DetailPage implements OnInit, OnDestroy {
   previewUrl = '';
   downloadUrl = '';
 
+  // Zoom
+  zoom = 150; // initial zoom %
+
   // Splitter sizing
-  splitterHeight = 'calc(100dvh - 160px)';
+  // Give the PDF more vertical room than before
+  splitterHeight = 'calc(100dvh - 120px)';
+  // Allow left/right to fully collapse; keep center usable
   minSizes: number[] = [0, 20, 0];
 
-  private savedLeft = +(localStorage.getItem('detailLeft') || '20');
-  private savedRight = +(localStorage.getItem('detailRight') || '25');
+  // Saved default sizes (sum=100)
+  private savedLeft = +(localStorage.getItem('detailLeft') || '20');   // %
+  private savedRight = +(localStorage.getItem('detailRight') || '25'); // %
   panelSizes: number[] = JSON.parse(localStorage.getItem('detailSplitter') || '[20,55,25]');
 
   leftHidden = false;
@@ -594,6 +603,7 @@ export class DetailPage implements OnInit, OnDestroy {
     { icon: 'pi pi-link', tooltipOptions: { tooltipLabel: 'Paylaş' }, command: () => this.copyShareLink() },
   ];
 
+  // ——— Tag templates (single definition) ———
   tplName = '';
   tagTemplates: { name: string; tags: string[] }[] = [];
 
@@ -644,14 +654,17 @@ export class DetailPage implements OnInit, OnDestroy {
 
     this.restoreChatIfAny();
 
+    // URLs (add zoom to preview for consistency)
     const baseInline = this.api.inlineUrl(this.id);
     const sep = baseInline.includes('?') ? '&' : '?';
     const inlineUrl = `${baseInline}${sep}v=${Date.now()}`;
-    this.previewUrl = `${this.api.previewUrl(this.id)}?v=${Date.now()}`;
+    this.previewUrl = `${this.api.previewUrl(this.id)}?v=${Date.now()}#zoom=${this.zoom}`;
     this.downloadUrl = `${this.api.downloadUrl(this.id)}?v=${Date.now()}`;
 
+    // Load PDF as blob and show at desired zoom
     this.loadPdfBlob(inlineUrl);
 
+    // Doc meta
     this.api.getDoc(this.id).subscribe({
       next: (d: DocInfo) => {
         this.doc = d;
@@ -693,6 +706,7 @@ export class DetailPage implements OnInit, OnDestroy {
 
     document.body.classList.toggle('compact', this.dense);
 
+    // Intro hint
     this.fabIntro = true;
     setTimeout(() => this.fabIntro = false, 6000);
 
@@ -707,6 +721,7 @@ export class DetailPage implements OnInit, OnDestroy {
       }, 900);
     }
 
+    // Apply initial panel visibility state
     this.applyPanelState();
   }
 
@@ -714,25 +729,29 @@ export class DetailPage implements OnInit, OnDestroy {
     if (this.blobObjectUrl) URL.revokeObjectURL(this.blobObjectUrl);
   }
 
-  /** Splitter logic */
+  /** ——— Splitter logic ——— */
   private applyPanelState() {
-    const left = this.leftHidden ? 0 : this.clamp(this.savedLeft, 0, 40);
-    const right = this.rightHidden ? 0 : this.clamp(this.savedRight, 0, 40);
+    // Remove old 40% caps so right/left can expand freely; keep center >= 20
+    const cap = (n: number) => this.clamp(n, 0, 100);
+    const left = this.leftHidden ? 0 : cap(this.savedLeft);
+    const right = this.rightHidden ? 0 : cap(this.savedRight);
     let middle = 100 - left - right;
+
     if (middle < 20) {
+      // reduce the larger side to guarantee middle min 20
       const deficit = 20 - middle;
-      if (!this.leftHidden && left >= deficit) {
+      if (!this.leftHidden && (left >= right)) {
         this.savedLeft = Math.max(0, left - deficit);
-      } else if (!this.rightHidden && right >= deficit) {
+      } else if (!this.rightHidden) {
         this.savedRight = Math.max(0, right - deficit);
       }
-      middle = 100 - (this.leftHidden ? 0 : this.savedLeft) - (this.rightHidden ? 0 : this.savedRight);
     }
-    this.panelSizes = [
-      this.leftHidden ? 0 : this.savedLeft,
-      middle,
-      this.rightHidden ? 0 : this.savedRight
-    ];
+    const L = this.leftHidden ? 0 : this.savedLeft;
+    const R = this.rightHidden ? 0 : this.savedRight;
+    const M = Math.max(20, 100 - L - R);
+
+    this.panelSizes = [Math.max(0, Math.round(L)), Math.max(20, Math.round(M)), Math.max(0, Math.round(R))];
+    // allow fully collapsed panels
     this.minSizes = [0, 20, 0];
     localStorage.setItem('detailSplitter', JSON.stringify(this.panelSizes));
     localStorage.setItem('detailLeft', String(this.savedLeft));
@@ -757,14 +776,12 @@ export class DetailPage implements OnInit, OnDestroy {
 
   toggleLeft() {
     this.leftHidden = !this.leftHidden;
-    if (!this.leftHidden && this.panelSizes[1] < 40) this.savedLeft = 20;
     this.zenMode = this.leftHidden && this.rightHidden;
     this.applyPanelState();
   }
 
   toggleRight() {
     this.rightHidden = !this.rightHidden;
-    if (!this.rightHidden && this.panelSizes[1] < 40) this.savedRight = 25;
     this.zenMode = this.leftHidden && this.rightHidden;
     this.applyPanelState();
   }
@@ -782,7 +799,7 @@ export class DetailPage implements OnInit, OnDestroy {
     this.applyPanelState();
   }
 
-  /** PDF */
+  /** ——— PDF ——— */
   private loadPdfBlob(url: string) {
     this.pdfError = false;
     if (this.blobObjectUrl) { URL.revokeObjectURL(this.blobObjectUrl); this.blobObjectUrl = undefined; }
@@ -793,13 +810,31 @@ export class DetailPage implements OnInit, OnDestroy {
         const mime = blob.type || 'application/pdf';
         const pdfBlob = mime.includes('pdf') ? blob : new Blob([blob], { type: 'application/pdf' });
         this.blobObjectUrl = URL.createObjectURL(pdfBlob);
-        this.pdfBlobUrl = this.san.bypassSecurityTrustResourceUrl(this.blobObjectUrl);
+        // Apply desired zoom via fragment; works in Chromium/Firefox PDF viewers
+        const withZoom = `${this.blobObjectUrl}#zoom=${this.zoom}`;
+        this.pdfBlobUrl = this.san.bypassSecurityTrustResourceUrl(withZoom);
       },
       error: (err) => {
         console.error('PDF blob error', err);
         this.pdfError = true;
       }
     });
+  }
+
+  private refreshPdfView() {
+    if (this.blobObjectUrl) {
+      this.pdfBlobUrl = this.san.bypassSecurityTrustResourceUrl(`${this.blobObjectUrl}#zoom=${this.zoom}`);
+      this.pokePdfResize();
+    }
+  }
+
+  zoomIn() {
+    this.zoom = Math.min(400, this.zoom + 25);
+    this.refreshPdfView();
+  }
+  zoomOut() {
+    this.zoom = Math.max(25, this.zoom - 25);
+    this.refreshPdfView();
   }
 
   reloadPdf() {
@@ -811,14 +846,14 @@ export class DetailPage implements OnInit, OnDestroy {
   openInNewTab() { window.open(this.previewUrl, '_blank'); }
   downloadPdf() { window.open(this.downloadUrl, '_blank'); }
 
-  /** Density toggle (MISSING BEFORE) */
+  /** Density toggle */
   toggleDensity() {
     this.dense = !this.dense;
     document.body.classList.toggle('compact', this.dense);
     localStorage.setItem('density', this.dense ? 'compact' : 'comfortable');
   }
 
-  /** Tags & templates (load/save helpers that template calls) */
+  /** ——— Tag templates (helpers) ——— */
   loadTagTemplates() {
     try { this.tagTemplates = JSON.parse(localStorage.getItem('tagTemplates') || '[]'); }
     catch { this.tagTemplates = []; }
@@ -852,7 +887,7 @@ export class DetailPage implements OnInit, OnDestroy {
     this.toast('warn', 'Şablon silindi', name);
   }
 
-  /** Tag & summary misc */
+  /** ——— Tag & summary misc ——— */
   joinTags(a: string[]): string { return (a || []).map(x => x.trim()).filter(Boolean).join(', '); }
   addTag(t: string) {
     if (!t) return;
