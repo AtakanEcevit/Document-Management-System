@@ -5,6 +5,11 @@ services:
       POSTGRES_DB: appdb
       POSTGRES_USER: appuser
       POSTGRES_PASSWORD: secret
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appuser -d appdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     ports:
       - "5432:5432"
     volumes:
@@ -20,7 +25,8 @@ services:
       DATABASE_URL: postgresql://appuser:secret@db:5432/appdb
       ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080,http://localhost:4200,http://127.0.0.1:4200,http://web"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
       - uploads:/app/uploads
     ports:
@@ -38,7 +44,7 @@ services:
   pgadmin:
     image: dpage/pgadmin4
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@local.test
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "5050:80"

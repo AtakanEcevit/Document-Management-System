@@ -36,13 +36,23 @@ def _chat(messages: List[Dict[str, Any]]) -> str:
 def extract_keywords(text: str) -> Dict[str, Any]:
     sys = {
         "role": "system",
-        "content": "You extract high-precision Turkish keyphrases from the document. "
-        "No prefix/suffix. conf in [0,1]. Phrases must be 1-3 words, informative, not generic."
-        "Output in Turkish",
+        "content": (
+            "Türkçe metinlerden yüksek isabetli anahtar ifadeler çıkaran bir yardımcıdır. "
+            "Kurallar: (1) Sadece Türkçe yaz. (2) 1–3 kelimelik, bilgi değeri yüksek öbekler üret; "
+            "genel/boş (ör. 'giriş', 'özet') veya stopword içeren ifadeleri çıkarma. "
+            "Özel adları ve teknik terimleri koru, küçük/büyük harfleri doğal biçimde kullan. "
+            "Aynı kökten tekrarları verme."
+        ),
     }
     usr = {
         "role": "user",
-        "content": f"Metinden 5-12 arası anahtar kelime üret. Cevabında sadece virgülle ayrık liste döndür, anahtar kelimeden başka bir cümle koyma. \nMetin:\n{text}",
+        "content": (
+            "Aşağıdaki metinden EN AZ 5, EN FAZLA 12 anahtar ifade çıkar. "
+            "YANIT BİÇİMİ: Sadece virgülle ayrık TEK SATIR CSV döndür; "
+            "virgülden sonra boşluk bırakma; tırnak, numara, madde imi, açıklama ekleme. "
+            "Örnek biçim: kelime1,kelime2,kelime3\n\n"
+            f"Metin:\n{text}"
+        ),
     }
     raw = _chat([sys, usr]) or ""
     kws = [k.strip() for k in raw.replace("\n", " ").split(",") if k.strip()]
@@ -52,6 +62,8 @@ def extract_keywords(text: str) -> Dict[str, Any]:
         if ck not in seen:
             seen.add(ck)
             ordered.append(k)
+    # İsteğe göre kırp (maksimum 12)
+    ordered = ordered[:12]
     return {"keywords": [{"kw": k} for k in ordered]}
 
 
@@ -59,18 +71,16 @@ def summarize_text(text: str) -> str:
     sys = {
         "role": "system",
         "content": (
-            "You are a summarization assistant. "
-            "Return a concise summary. "
-            "Do not add headings or any prefix/suffix."
-            "Output in turkish."
+            "Türkçe, kısa ve etiketlemeye uygun özetler üreten bir yardımcıdır. "
+            "Kurallar: (1) Sadece özeti döndür. (2) Başlık, ön/son söz, emoji, tırnak, liste yok. "
+            "(3) En fazla 35 kelime, tek paragraf, tarafsız ve bilgi odaklı."
         ),
     }
     usr = {
         "role": "user",
         "content": (
-            "Aşağıdaki belgenin **Türkçe** kısa ve yüksek kaliteli bir özeti çıkar. "
-            "**kısa** ve **etiketlemeye uygun** olsun. "
-            "Sadece özeti döndür; açıklama veya başlık ekleme.\n\n"
+            "Aşağıdaki belgenin kısa ve yüksek kaliteli bir özetini üret. "
+            "YANIT BİÇİMİ: Sadece özet cümlesini döndür; başka hiçbir şey ekleme.\n\n"
             f"Belge:\n{text}"
         ),
     }
@@ -81,13 +91,15 @@ def summarize_text(text: str) -> str:
 def predict_category(
     text: str, allowed: Optional[List[str]] = None, fallback: str = "General"
 ) -> str:
-    sys = {"role": "system", "content": "Belgeleri sınıflandır."}
-    usr = {
-        "role": "user",
-        "content": f"Metnin türünü türkçe tek kısa kategori adıyla döndür (ör: Fatura, Özgeçmiş). Sadece ad.\n\n{text}",
+    sys = {
+        "role": "system",
+        "content": (
+            "Belge türü sınıflandırıcısısın. "
+            "Kurallar: (1) Sadece Türkçe tek kısa kategori adı döndür. "
+            "(2) Başka hiçbir metin, açıklama, noktalama, emoji ekleme. "
+            "(3) Çıktı TEK SATIR olmalı."
+        ),
     }
-    raw = _chat([sys, usr]) or ""
-    cat = next((ln.strip() for ln in raw.splitlines() if ln.strip()), fallback)
-    if allowed and cat not in allowed:
-        return fallback
-    return cat
+
+    if allowed:
+        allowed_list =_

@@ -35,20 +35,19 @@ import { firstValueFrom, Subject, debounceTime } from 'rxjs';
 type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string };
 
 @Component({
-    standalone: true,
-    selector: 'app-detail',
-    imports: [
-        CommonModule, FormsModule, HttpClientModule,
-        SplitterModule, AutoCompleteModule, DropdownModule,
-        InputTextModule, InputTextareaModule,
-        ButtonModule, ToastModule, SkeletonModule,
-        DialogModule, ListboxModule, ProgressBarModule, SidebarModule,
-        CardModule, TooltipModule, SpeedDialModule, TagModule, ConfirmDialogModule,
-        TabViewModule, SliderModule, ChipModule
-    ],
-    providers: [MessageService, ConfirmationService],
-    styles: [`
-    /* ---------- Design tokens ---------- */
+  standalone: true,
+  selector: 'app-detail',
+  imports: [
+    CommonModule, FormsModule, HttpClientModule,
+    SplitterModule, AutoCompleteModule, DropdownModule,
+    InputTextModule, InputTextareaModule,
+    ButtonModule, ToastModule, SkeletonModule,
+    DialogModule, ListboxModule, ProgressBarModule, SidebarModule,
+    CardModule, TooltipModule, SpeedDialModule, TagModule, ConfirmDialogModule,
+    TabViewModule, SliderModule, ChipModule
+  ],
+  providers: [MessageService, ConfirmationService],
+  styles: [`
     :host{
       --brand-h: 256; --brand-s: 86%; --brand-l: 64%;
       --brand: hsl(var(--brand-h) var(--brand-s) var(--brand-l));
@@ -59,15 +58,14 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string
       --radius: 12px;
       --elev-1: 0 1px 2px rgba(0,0,0,.18), 0 10px 26px rgba(0,0,0,.22);
       --elev-2: 0 2px 8px rgba(0,0,0,.24), 0 20px 36px rgba(0,0,0,.24);
-      color-scheme: dark; /* uygulama dark ise; light ise 'light' yap */
+      color-scheme: dark;
     }
-
     .detail-bg{
       background:
         radial-gradient(1200px 600px at 10% -10%, rgba(130,103,255,.08), transparent 60%),
         radial-gradient(900px 520px at 110% 10%, rgba(47,159,255,.07), transparent 50%),
         var(--surface-0);
-      position:relative; min-height: 100%; display:block;
+      position:relative; min-height: 100dvh; display:block;
       padding:.5rem;
     }
     .detail-bg::before{
@@ -78,7 +76,6 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string
       <rect width='120' height='120' filter='url(%23n)' opacity='0.012'/></svg>");
       background-size: 240px 240px;
     }
-
     .header {
       position: sticky; top: 0; z-index: 6; backdrop-filter: blur(8px);
       display:flex; align-items:center; gap:.75rem; padding:.75rem;
@@ -110,7 +107,7 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string
       .header .meta.small{ display:none; }
     }
 
-    .panel-pad { padding: .75rem; height: 100%; box-sizing: border-box; }
+    .panel-pad { flex: 1 1 auto; min-height: 0; height: auto; padding: .75rem; box-sizing: border-box; }
     .field { display:grid; gap:.4rem; margin-bottom:.9rem; }
     .label { opacity:.85; font-size:.94rem; }
     .cardish{
@@ -140,7 +137,7 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string
     :host ::ng-deep .p-splitter-panel { min-width: 0; min-height: 0; display:flex; }
     :host ::ng-deep .p-splitter-gutter{ background: transparent; }
     :host ::ng-deep .p-splitter-gutter-handle{
-      width: 4px; border-radius: 999px;
+      width: 6px; border-radius: 999px;
       background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.06));
       transition: transform .15s ease, background .2s ease;
     }
@@ -151,9 +148,7 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string
     .right-pane { display: flex; flex-direction: column; min-height: 0; }
     :host ::ng-deep .right-pane .p-tabview { height: 100%; display:flex; flex-direction: column; min-height: 0; }
     :host ::ng-deep .right-pane .p-tabview-panels {
-      flex: 1 1 auto; min-height: 0;
-      overflow: hidden;
-      padding-right: .25rem;
+      flex: 1 1 auto; min-height: 0; overflow: hidden; padding-right: .25rem;
       background:
         radial-gradient(60% 40% at 60% 0%, rgba(255,255,255,.03), transparent 60%),
         linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
@@ -163,10 +158,7 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string
     :host ::ng-deep .p-tabview-panel{ min-height:0; }
     :host ::ng-deep .p-tabview-panel[hidden]{ display:none !important; }
     :host ::ng-deep .p-tabview-panel:not([hidden]){
-      height:100% !important;
-      display:flex !important;
-      flex-direction:column;
-      min-height:0;
+      height:100% !important; display:flex !important; flex-direction:column; min-height:0;
     }
 
     .tab-scroll{ flex:1 1 auto; min-height:0; overflow:auto; }
@@ -185,16 +177,13 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string
     }
 
     .center-pane{
-      display:flex;
-      align-items:stretch;
-      justify-content:stretch;
-      min-height:0;
+      display:flex; flex: 1 1 auto; min-height:0; align-items:stretch; justify-content:stretch;
       background:
         radial-gradient(40% 50% at 60% 0%, rgba(255,255,255,.04), transparent 60%),
         linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
     }
 
-    .pdf-frame{ width:100%; height:100%; border:0; border-radius:.6rem; }
+    .pdf-frame{ width:100%; height:100%; border:0; border-radius:.6rem; flex: 1 1 auto; }
 
     .viewer-toolbar{
       position:absolute; right: 1rem; bottom: 1rem; z-index: 5;
@@ -248,37 +237,12 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string
       box-shadow: 0 22px 60px rgba(0,0,0,.55), 0 8px 26px rgba(0,0,0,.35);
       overflow: hidden;
     }
-    .chat-head{ display:flex; align-items:center; gap:.5rem; padding:.5rem .6rem; background: linear-gradient(180deg, color-mix(in hsl, var(--brand), #000 18%), transparent); border-bottom:1px solid var(--border); }
-    .chat-head .title{ font-weight: 800; }
-    .chat-head .grow{ flex:1 1 auto; }
-    .chat-head .iconbtn{ width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center;
-      border-radius:999px; border:1px solid var(--border);
-      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06)); cursor:pointer; }
-    .chat-body{ flex:1 1 auto; min-height:0; overflow:auto; padding:.5rem; display:flex; flex-direction:column; gap:.5rem; }
-    .chat-input{ display:flex; gap:.5rem; align-items:flex-end; padding:.5rem; border-top:1px solid var(--border); background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)); }
-
-    .bubble{
-      padding:.55rem .7rem; border-radius:10px; max-width:90%;
-      box-shadow: 0 2px 10px rgba(0,0,0,.25);
-      border:1px solid rgba(255,255,255,.12);
-      white-space: pre-wrap;
-      backdrop-filter: blur(6px);
-      transition: box-shadow .18s ease, transform .12s ease;
-    }
-    .bubble-user{ margin-left:auto; background: linear-gradient(180deg, rgba(56,189,248,.12), rgba(56,189,248,.05)); border-color: rgba(56,189,248,.25); }
-    .bubble-ai{ margin-right:auto; background: linear-gradient(180deg, rgba(124,77,255,.10), rgba(124,77,255,.04)); border-color: rgba(124,77,255,.25); }
-    .bubble-user:hover, .bubble-ai:hover{ box-shadow: 0 6px 22px rgba(0,0,0,.28); }
 
     .typing { display:inline-flex; gap:.3rem; align-items:center; }
     .typing .dot{ width:6px; height:6px; border-radius:999px; background: #dbeafe; opacity:.9; animation: bounce 1s infinite ease-in-out; }
     .typing .dot:nth-child(2){ animation-delay: .15s;}
     .typing .dot:nth-child(3){ animation-delay: .3s;}
     @keyframes bounce{ 0%, 80%, 100%{ transform: translateY(0); opacity:.6; } 40%{ transform: translateY(-4px); opacity:1; } }
-
-    .enter-left{ animation: enterL .15s ease-out; }
-    .enter-right{ animation: enterR .15s ease-out; }
-    @keyframes enterL{ from{ transform: translateX(-6px); opacity:.7 } to{ transform:none; opacity:1 } }
-    @keyframes enterR{ from{ transform: translateX(6px); opacity:.7 } to{ transform:none; opacity:1 } }
 
     @keyframes greenPulse { from{ box-shadow:0 0 0 0 rgba(16,185,129,.35);} to{ box-shadow:0 0 0 14px rgba(16,185,129,0);} }
     .p-button.pulse{ animation: greenPulse .8s ease-out 1; }
@@ -289,7 +253,7 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string
       *{ animation: none !important; transition: none !important; }
     }
   `],
-    template: `
+  template: `
   <div class="detail-bg">
     <p-toast></p-toast>
     <p-confirmDialog></p-confirmDialog>
@@ -327,17 +291,17 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string
       <div *ngIf="savingAll" class="saving-stripe"></div>
     </div>
 
-    <!-- 3-Pane -->
-    <p-splitter styleClass="p-mt-3"
-                [gutterSize]="8"
-                [panelSizes]="panelSizes"
-                [minSizes]="[16,40,20]"
-                (onResizeEnd)="saveSplitter($event)"
-                [style]="{height: 'calc(100vh - 240px)'}">
+    <!-- 3-Pane Splitter -->
+    <p-splitter
+      [gutterSize]="10"
+      [panelSizes]="panelSizes"
+      [minSizes]="minSizes"
+      (onResizeEnd)="saveSplitter($event)"
+      [style]="{ height: splitterHeight }">
 
-      <!-- Sol -->
+      <!-- Left -->
       <ng-template pTemplate>
-        <div class="panel-pad cardish" [style.display]="leftHidden ? 'none' : 'block'">
+        <div class="panel-pad cardish">
           <h3 style="margin-top:.25rem;">Belge Bilgileri</h3>
           <div class="field">
             <div class="label">Belge ID</div>
@@ -364,13 +328,13 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string
         </div>
       </ng-template>
 
-      <!-- Orta: PDF (Blob + native viewer) -->
+      <!-- Center: PDF -->
       <ng-template pTemplate>
-        <div class="panel-pad cardish center-pane" style="position:relative; min-height:0;">
+        <div class="panel-pad cardish center-pane" style="position:relative;">
           <ng-container *ngIf="!pdfError; else pdfErrorTpl">
             <ng-container *ngIf="pdfBlobUrl; else loadingTpl">
-              <object class="pdf-frame" [data]="pdfBlobUrl" type="application/pdf" style="width:100%;height:100%;">
-                <iframe class="pdf-frame" [src]="pdfBlobUrl" style="width:100%;height:100%;border:0;"></iframe>
+              <object class="pdf-frame" [data]="pdfBlobUrl" type="application/pdf">
+                <iframe class="pdf-frame" [src]="pdfBlobUrl" style="border:0;"></iframe>
               </object>
             </ng-container>
           </ng-container>
@@ -393,9 +357,9 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string
         </div>
       </ng-template>
 
-      <!-- Sağ: Tabs -->
+      <!-- Right: Tabs -->
       <ng-template pTemplate>
-        <div class="panel-pad cardish right-pane" [style.display]="rightHidden ? 'none' : 'block'">
+        <div class="panel-pad cardish right-pane">
           <p-tabView [(activeIndex)]="tabIndex" (activeIndexChange)="onTabChange($event)">
             <p-tabPanel header="Etiketler">
               <div class="tab-scroll">
@@ -555,613 +519,660 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string
   `
 })
 export class DetailPage implements OnInit, OnDestroy {
-    id!: string;
-    doc?: DocInfo;
+  id!: string;
+  doc?: DocInfo;
 
-    // —— PDF (Blob + native viewer)
-    pdfBlobUrl?: SafeResourceUrl;
-    private blobObjectUrl?: string;
-    pdfError = false;
-    pageCount = 0;
+  // —— PDF (Blob + native viewer)
+  pdfBlobUrl?: SafeResourceUrl;
+  private blobObjectUrl?: string;
+  pdfError = false;
+  pageCount = 0;
 
-    previewUrl = '';
-    downloadUrl = '';
+  previewUrl = '';
+  downloadUrl = '';
 
-    tabIndex = +(localStorage.getItem('detailTab') || '0');
-    onTabChange(i: number) {
-        this.tabIndex = i;
-        localStorage.setItem('detailTab', String(i));
-        setTimeout(() => this.pokePdfResize(), 0);
-    }
+  // Splitter sizing
+  splitterHeight = 'calc(100dvh - 160px)';
+  minSizes: number[] = [0, 20, 0];
 
-    tagsArr: string[] = [];
-    tagSuggestions: string[] = [];
-    trendTags: string[] = [];
-    categoryOptions: { label: string; value: string }[] = [];
-    cat = '';
+  private savedLeft = +(localStorage.getItem('detailLeft') || '20');
+  private savedRight = +(localStorage.getItem('detailRight') || '25');
+  panelSizes: number[] = JSON.parse(localStorage.getItem('detailSplitter') || '[20,55,25]');
 
-    summary = '';
-    summaryWords = 0;
-    summaryScore = 0;
-    summaryHint = '';
-    summaryColor = '#9ca3af';
-    targetWords = 100;
+  leftHidden = false;
+  rightHidden = false;
+  zenMode = false;
 
-    lastSavedAt = '';
-    loading = true;
-    savingAll = false;
-    reanalyzing = false;
-    isDirty = false;
-    zenMode = false;
-    savedPulse = false;
+  tabIndex = +(localStorage.getItem('detailTab') || '0');
 
-    online = navigator.onLine;
+  tagsArr: string[] = [];
+  tagSuggestions: string[] = [];
+  trendTags: string[] = [];
+  categoryOptions: { label: string; value: string }[] = [];
+  cat = '';
 
-    paletteOpen = false;
-    paletteQuery = '';
-    selectedCommand: any = null;
-    commands = [
-        { id: 'save', label: 'Kaydet (Ctrl+S)' },
-        { id: 'reanalyze', label: 'Yeniden Analiz' },
-        { id: 'download', label: 'PDF İndir' },
-        { id: 'openPreview', label: 'Tarayıcıda Aç' },
-        { id: 'similar', label: 'Benzer Dokümanları Göster' },
-        { id: 'shorten', label: 'Özeti Kısalt (~120 kelime)' },
-        { id: 'expand', label: 'Özeti Genişlet (~250 kelime)' },
-        { id: 'copyTags', label: 'Etiketleri Panoya Kopyala' },
-        { id: 'share', label: 'Bağlantıyı Kopyala' }
-    ];
-    filteredCommands = [...this.commands];
+  summary = '';
+  summaryWords = 0;
+  summaryScore = 0;
+  summaryHint = '';
+  summaryColor = '#9ca3af';
+  targetWords = 100;
 
-    similarOpen = false;
-    similarLoading = false;
-    similar: Array<DocInfo & { _sim?: number }> = [];
+  lastSavedAt = '';
+  loading = true;
+  savingAll = false;
+  reanalyzing = false;
+  isDirty = false;
+  savedPulse = false;
 
-    panelSizes: number[] = JSON.parse(localStorage.getItem('detailSplitter') || '[20,55,25]');
-    leftHidden = false;
-    rightHidden = false;
+  online = navigator.onLine;
 
-    dialItems: MenuItem[] = [
-        { icon: 'pi pi-refresh', tooltipOptions: { tooltipLabel: 'Yeniden Analiz' }, command: () => this.confirmReAnalyze() },
-        { icon: 'pi pi-compass', tooltipOptions: { tooltipLabel: 'Benzerler' }, command: () => this.toggleSimilarPanel(true) },
-        { icon: 'pi pi-download', tooltipOptions: { tooltipLabel: 'PDF İndir' }, command: () => this.downloadPdf() },
-        { icon: 'pi pi-link', tooltipOptions: { tooltipLabel: 'Paylaş' }, command: () => this.copyShareLink() },
-    ];
+  paletteOpen = false;
+  paletteQuery = '';
+  selectedCommand: any = null;
+  commands = [
+    { id: 'save', label: 'Kaydet (Ctrl+S)' },
+    { id: 'reanalyze', label: 'Yeniden Analiz' },
+    { id: 'download', label: 'PDF İndir' },
+    { id: 'openPreview', label: 'Tarayıcıda Aç' },
+    { id: 'similar', label: 'Benzer Dokümanları Göster' },
+    { id: 'shorten', label: 'Özeti Kısalt (~120 kelime)' },
+    { id: 'expand', label: 'Özeti Genişlet (~250 kelime)' },
+    { id: 'copyTags', label: 'Etiketleri Panoya Kopyala' },
+    { id: 'share', label: 'Bağlantıyı Kopyala' }
+  ];
+  filteredCommands = [...this.commands];
 
-    tplName = '';
-    tagTemplates: { name: string; tags: string[] }[] = [];
+  similarOpen = false;
+  similarLoading = false;
+  similar: Array<DocInfo & { _sim?: number }> = [];
 
-    historyOpen = false;
-    history: { when: string; msg: string }[] = [];
-    private lastSnapshot: { tagsJson: string; cat: string; summary: string } = { tagsJson: '[]', cat: '', summary: '' };
+  dialItems: MenuItem[] = [
+    { icon: 'pi pi-refresh', tooltipOptions: { tooltipLabel: 'Yeniden Analiz' }, command: () => this.confirmReAnalyze() },
+    { icon: 'pi pi-compass', tooltipOptions: { tooltipLabel: 'Benzerler' }, command: () => this.toggleSimilarPanel(true) },
+    { icon: 'pi pi-download', tooltipOptions: { tooltipLabel: 'PDF İndir' }, command: () => this.downloadPdf() },
+    { icon: 'pi pi-link', tooltipOptions: { tooltipLabel: 'Paylaş' }, command: () => this.copyShareLink() },
+  ];
 
-    private autosave$ = new Subject<void>();
-    private savingFromAuto = false;
-    private lastSaveFxAt = 0;
+  tplName = '';
+  tagTemplates: { name: string; tags: string[] }[] = [];
 
-    dense = localStorage.getItem('density') === 'compact';
+  historyOpen = false;
+  history: { when: string; msg: string }[] = [];
+  private lastSnapshot: { tagsJson: string; cat: string; summary: string } = { tagsJson: '[]', cat: '', summary: '' };
 
-    fabIntro = false;
-    chatOpen = false;
-    chatSessionId = '';
-    chatMessages: ChatMsg[] = [];
-    chatInput = '';
-    chatBusy = false;
-    fxMuted = localStorage.getItem('fxMuted') === '1';
+  private autosave$ = new Subject<void>();
+  private savingFromAuto = false;
+  private lastSaveFxAt = 0;
 
-    @ViewChild('floatChatLog') floatChatLog?: ElementRef<HTMLDivElement>;
+  dense = localStorage.getItem('density') === 'compact';
 
-    constructor(
-        private route: ActivatedRoute,
-        public api: ApiService,
-        private router: Router,
-        private san: DomSanitizer,
-        private msg: MessageService,
-        private confirm: ConfirmationService,
-        private http: HttpClient
-    ) { }
+  fabIntro = false;
+  chatOpen = false;
+  chatSessionId = '';
+  chatMessages: ChatMsg[] = [];
+  chatInput = '';
+  chatBusy = false;
+  fxMuted = localStorage.getItem('fxMuted') === '1';
 
-    private pokePdfResize() {
-        try { window.dispatchEvent(new Event('resize')); } catch { }
-    }
+  @ViewChild('floatChatLog') floatChatLog?: ElementRef<HTMLDivElement>;
 
-    ngOnInit(): void {
-        this.id = this.route.snapshot.paramMap.get('id')
-            || this.route.snapshot.paramMap.get('hash')
-            || '';
+  constructor(
+    private route: ActivatedRoute,
+    public api: ApiService,
+    private router: Router,
+    private san: DomSanitizer,
+    private msg: MessageService,
+    private confirm: ConfirmationService,
+    private http: HttpClient
+  ) { }
 
-        this.restoreChatIfAny();
+  private pokePdfResize() {
+    try { window.dispatchEvent(new Event('resize')); } catch { }
+  }
 
-        // URL'leri hazırla
-        const baseInline = this.api.inlineUrl(this.id);
-        const sep = baseInline.includes('?') ? '&' : '?';
-        const inlineUrl = `${baseInline}${sep}v=${Date.now()}`;
-        this.previewUrl = `${this.api.previewUrl(this.id)}?v=${Date.now()}`;
-        this.downloadUrl = `${this.api.downloadUrl(this.id)}?v=${Date.now()}`;
+  onTabChange(i: number) {
+    this.tabIndex = i;
+    localStorage.setItem('detailTab', String(i));
+    setTimeout(() => this.pokePdfResize(), 0);
+  }
 
-        // PDF'yi Blob olarak getir ve göster
-        this.loadPdfBlob(inlineUrl);
+  ngOnInit(): void {
+    this.id = this.route.snapshot.paramMap.get('id')
+      || this.route.snapshot.paramMap.get('hash')
+      || '';
 
-        // Doc meta
-        this.api.getDoc(this.id).subscribe({
-            next: (d: DocInfo) => {
-                this.doc = d;
-                this.tagsArr = d.tags || [];
-                this.cat = d.category || '';
-                this.summary = d.summary || '';
-                this.snapshot();
-                this.onSummaryMetrics();
-                this.loading = false;
-            },
-            error: () => {
-                this.loading = false;
-                this.toast('error', 'Belge getirilemedi', 'Sunucudan yanıt alınamadı.');
-                this.playFx('error');
-            }
-        });
+    this.restoreChatIfAny();
 
-        this.api.suggestCategories('', 100).subscribe({
-            next: (arr: string[]) => this.categoryOptions = (arr || []).map(v => ({ label: v, value: v })),
-            error: () => { }
-        });
-        this.api.suggestKeywords('', 12).subscribe({
-            next: (arr: string[]) => this.trendTags = (arr || []).slice(0, 10),
-            error: () => { }
-        });
+    const baseInline = this.api.inlineUrl(this.id);
+    const sep = baseInline.includes('?') ? '&' : '?';
+    const inlineUrl = `${baseInline}${sep}v=${Date.now()}`;
+    this.previewUrl = `${this.api.previewUrl(this.id)}?v=${Date.now()}`;
+    this.downloadUrl = `${this.api.downloadUrl(this.id)}?v=${Date.now()}`;
 
-        this.loadTagTemplates();
-        this.loadHistory();
+    this.loadPdfBlob(inlineUrl);
 
-        window.addEventListener('online', () => { this.online = true; this.toast('info', 'Bağlantı geri geldi'); this.playFx('open'); });
-        window.addEventListener('offline', () => { this.online = false; this.toast('warn', 'Çevrimdışı'); });
+    this.api.getDoc(this.id).subscribe({
+      next: (d: DocInfo) => {
+        this.doc = d;
+        this.tagsArr = d.tags || [];
+        this.cat = d.category || '';
+        this.summary = d.summary || '';
+        this.snapshot();
+        this.onSummaryMetrics();
+        this.loading = false;
+      },
+      error: () => {
+        this.loading = false;
+        this.toast('error', 'Belge getirilemedi', 'Sunucudan yanıt alınamadı.');
+        this.playFx('error');
+      }
+    });
 
-        this.autosave$
-            .pipe(debounceTime(1200))
-            .subscribe(() => {
-                this.savingFromAuto = true;
-                this.saveAll().finally(() => this.savingFromAuto = false);
-            });
+    this.api.suggestCategories('', 100).subscribe({
+      next: (arr: string[]) => this.categoryOptions = (arr || []).map(v => ({ label: v, value: v })),
+      error: () => { }
+    });
+    this.api.suggestKeywords('', 12).subscribe({
+      next: (arr: string[]) => this.trendTags = (arr || []).slice(0, 10),
+      error: () => { }
+    });
 
-        document.body.classList.toggle('compact', this.dense);
+    this.loadTagTemplates();
+    this.loadHistory();
 
-        this.fabIntro = true;
-        setTimeout(() => this.fabIntro = false, 6000);
+    window.addEventListener('online', () => { this.online = true; this.toast('info', 'Bağlantı geri geldi'); this.playFx('open'); });
+    window.addEventListener('offline', () => { this.online = false; this.toast('warn', 'Çevrimdışı'); });
 
-        if (!localStorage.getItem('chatPeeked')) {
-            setTimeout(() => {
-                this.chatOpen = true;
-                this.playFx('open');
-                setTimeout(() => {
-                    if (this.chatOpen && this.chatMessages.length === 0) this.chatOpen = false;
-                    localStorage.setItem('chatPeeked', '1');
-                }, 2500);
-            }, 900);
-        }
-    }
+    this.autosave$
+      .pipe(debounceTime(1200))
+      .subscribe(() => {
+        this.savingFromAuto = true;
+        this.saveAll().finally(() => this.savingFromAuto = false);
+      });
 
-    ngOnDestroy(): void {
-        if (this.blobObjectUrl) URL.revokeObjectURL(this.blobObjectUrl);
-    }
+    document.body.classList.toggle('compact', this.dense);
 
-    private loadPdfBlob(url: string) {
-        this.pdfError = false;
-        if (this.blobObjectUrl) { URL.revokeObjectURL(this.blobObjectUrl); this.blobObjectUrl = undefined; }
-        this.pdfBlobUrl = undefined;
+    this.fabIntro = true;
+    setTimeout(() => this.fabIntro = false, 6000);
 
-        this.http.get(url, { responseType: 'blob' }).subscribe({
-            next: (blob) => {
-                const mime = blob.type || 'application/pdf';
-                const pdfBlob = mime.includes('pdf') ? blob : new Blob([blob], { type: 'application/pdf' });
-                this.blobObjectUrl = URL.createObjectURL(pdfBlob);
-                this.pdfBlobUrl = this.san.bypassSecurityTrustResourceUrl(this.blobObjectUrl);
-            },
-            error: (err) => {
-                console.error('PDF blob error', err);
-                this.pdfError = true;
-            }
-        });
-    }
-
-    reloadPdf() {
-        const base = this.api.inlineUrl(this.id);
-        const sep = base.includes('?') ? '&' : '?';
-        const url = `${base}${sep}v=${Date.now()}`;
-        this.loadPdfBlob(url);
-    }
-    openInNewTab() { window.open(this.previewUrl, '_blank'); }
-    downloadPdf() { window.open(this.downloadUrl, '_blank'); }
-
-    // —— Tag & summary & misc (seninkiyle aynı) ——
-    joinTags(a: string[]): string { return (a || []).map(x => x.trim()).filter(Boolean).join(', '); }
-    addTag(t: string) {
-        if (!t) return;
-        if (!this.tagsArr.some(x => x.toLowerCase() === t.toLowerCase())) {
-            this.tagsArr = [...this.tagsArr, t];
-            this.onDirty();
-        }
-    }
-    searchTagSuggestions(ev: { query: string }) {
-        const q = ev?.query ?? '';
-        this.api.suggestKeywords(q, 12).subscribe({
-            next: (res: string[]) => {
-                const already = new Set(this.tagsArr.map(x => x.toLowerCase()));
-                this.tagSuggestions = (res || []).filter(x => !already.has(x.toLowerCase()));
-            },
-            error: () => { this.tagSuggestions = []; }
-        });
-    }
-
-    onDirty() { this.isDirty = true; this.autosave$.next(); }
-
-    async saveAll() {
-        if (!this.id) return;
-        const nextSnap = { tagsJson: JSON.stringify(this.tagsArr), cat: this.cat ?? '', summary: this.summary ?? '' };
-        const prev = this.lastSnapshot;
-        const patch: any = {};
-        if (prev.tagsJson !== nextSnap.tagsJson) patch.tags = this.tagsArr;
-        if (prev.cat !== nextSnap.cat) patch.category = this.cat || null;
-        if (prev.summary !== nextSnap.summary) patch.summary = this.summary || null;
-
-        if (!Object.keys(patch).length) { this.isDirty = false; return; }
-
-        this.savingAll = true;
-        try {
-            await firstValueFrom(this.api.patchDocument(this.id, patch));
-            this.lastSavedAt = new Date().toLocaleString();
-            this.isDirty = false;
-            this.lastSnapshot = nextSnap;
-            const msg = Object.keys(patch).map(k => k === 'tags' ? 'Etiketler' : k === 'category' ? 'Kategori' : 'Özet').join(', ') + ' güncellendi.';
-            this.toast('success', 'Kaydedildi', msg);
-            this.pushHistory(msg);
-            this.savedPulse = true; setTimeout(() => this.savedPulse = false, 800);
-
-            if (this.savingFromAuto) {
-                const now = Date.now();
-                if (now - this.lastSaveFxAt > 2500) {
-                    this.playFx('save');
-                    this.lastSaveFxAt = now;
-                }
-            }
-        } catch {
-            this.toast('error', 'Kayıt sırasında hata', 'Bazı alanlar kaydedilemedi.');
-            this.playFx('error');
-        } finally {
-            this.savingAll = false;
-        }
-    }
-
-    confirmReAnalyze() {
-        this.confirm.confirm({
-            header: 'Yeniden Analiz',
-            message: 'Bu belge için yeniden analiz başlatılsın mı?',
-            icon: 'pi pi-exclamation-triangle',
-            accept: () => this.reAnalyze()
-        });
-    }
-    reAnalyze() {
-        if (!this.id) return;
-        this.reanalyzing = true;
-        this.api.reanalyze(this.id).subscribe({
-            next: () => { this.reanalyzing = false; this.toast('success', 'Yeniden analiz başlatıldı', 'Sonuçlar hazır olunca sayfayı yenileyin.'); this.playFx('open'); },
-            error: () => { this.reanalyzing = false; this.toast('error', 'Yeniden analiz başarısız', 'Daha sonra tekrar deneyin.'); this.playFx('error'); }
-        });
-    }
-
-    onSummaryMetrics() {
-        const words = (this.summary || '').trim().split(/\s+/).filter(Boolean).length;
-        this.summaryWords = words;
-
-        const min = this.targetWords - 20;
-        const max = this.targetWords + 20;
-        let score = 0, hint = '';
-        if (words === 0) { score = 0; hint = 'Özet boş'; this.summaryColor = '#ef4444'; }
-        else if (words < min) { score = Math.round((words / Math.max(1, min)) * 70); hint = 'Kısa'; this.summaryColor = '#f59e0b'; }
-        else if (words > max) { score = Math.round((max / words) * 70); hint = 'Uzun'; this.summaryColor = '#f59e0b'; }
-        else { score = 100; hint = 'İdeal'; this.summaryColor = '#10b981'; }
-        this.summaryScore = Math.max(0, Math.min(100, score));
-        this.summaryHint = hint;
-    }
-
-    smartShorten() {
-        if (!this.summary) return;
-        const words = this.summary.trim().split(/\s+/);
-        this.summary = words.slice(0, this.targetWords).join(' ');
-        this.onSummaryMetrics(); this.onDirty();
-    }
-    smartExpand() {
-        if (!this.summary) return;
-        let s = this.summary.trim();
-        while (s.split(/\s+/).length < this.targetWords) {
-            s += ' Ayrıca,';
-            if (s.split(/\s+/).length >= this.targetWords) break;
-            s += ' bunun yanında';
-            if (s.split(/\s+/).length >= this.targetWords) break;
-            s += ' ve sonuç olarak';
-            break;
-        }
-        this.summary = s;
-        this.onSummaryMetrics(); this.onDirty();
-    }
-
-    @HostListener('document:keydown.control.k', ['$event'])
-    openPalette(ev?: KeyboardEvent) { ev?.preventDefault?.(); this.paletteOpen = true; this.paletteQuery = ''; this.filteredCommands = [...this.commands]; }
-    filterCommands() {
-        const q = (this.paletteQuery || '').toLowerCase();
-        this.filteredCommands = this.commands.filter(c => c.label.toLowerCase().includes(q));
-    }
-    runCommand(cmd: any) {
-        if (!cmd) return;
-        const id = cmd.id;
-        this.paletteOpen = false;
-        if (id === 'save') this.saveAll();
-        if (id === 'reanalyze') this.confirmReAnalyze();
-        if (id === 'download') this.downloadPdf();
-        if (id === 'openPreview') this.openInNewTab();
-        if (id === 'similar') this.toggleSimilarPanel(true);
-        if (id === 'shorten') { this.smartShorten(); }
-        if (id === 'expand') { this.smartExpand(); }
-        if (id === 'copyTags') { this.copyTags(); }
-        if (id === 'share') { this.copyShareLink(); }
-    }
-
-    toggleSimilarPanel(open: boolean) { this.similarOpen = open; if (open) this.loadSimilar(); }
-    loadSimilar() {
-        if (!this.doc) return;
-        this.similarLoading = true;
-        this.api.listFiles(undefined, 1000).subscribe(all => {
-            const mine = new Set(this.doc?.tags || []);
-            const sameCat = (d: DocInfo) => (d.category || '') === (this.doc?.category || '');
-            const score = (d: DocInfo) => {
-                let inter = 0; for (const t of d.tags || []) if (mine.has(t)) inter++;
-                return inter + (sameCat(d) ? 1.5 : 0);
-            };
-            this.similar = (all || [])
-                .filter(d => d.id !== this.id)
-                .map(d => ({ ...d, _sim: score(d) }))
-                .filter(d => (d._sim || 0) > 0)
-                .sort((a, b) => (b._sim || 0) - (a._sim || 0))
-                .slice(0, 8);
-            this.similarLoading = false;
-        }, _ => this.similarLoading = false);
-    }
-    openDoc(id: string) { window.open(`/documents/${id}`, '_blank'); }
-
-    saveSplitter(ev: any) {
-        if (ev?.sizes?.length === 3) {
-            this.panelSizes = ev.sizes;
-            localStorage.setItem('detailSplitter', JSON.stringify(this.panelSizes));
-            setTimeout(() => this.pokePdfResize(), 0);
-        }
-    }
-    toggleLeft() {
-        this.leftHidden = !this.leftHidden;
-        this.panelSizes = this.leftHidden ? [0, 75, 25] : JSON.parse(localStorage.getItem('detailSplitter') || '[20,55,25]');
-        setTimeout(() => this.pokePdfResize(), 0);
-    }
-    toggleRight() {
-        this.rightHidden = !this.rightHidden;
-        this.panelSizes = this.rightHidden ? [25, 75, 0] : JSON.parse(localStorage.getItem('detailSplitter') || '[20,55,25]');
-        setTimeout(() => this.pokePdfResize(), 0);
-    }
-    resetPanels() {
-        this.leftHidden = this.rightHidden = false;
-        this.panelSizes = [20, 55, 25];
-        localStorage.setItem('detailSplitter', JSON.stringify(this.panelSizes));
-        setTimeout(() => this.pokePdfResize(), 0);
-    }
-    toggleZen() {
-        this.zenMode = !this.zenMode;
-        if (this.zenMode) { this.leftHidden = true; this.rightHidden = true; this.panelSizes = [0, 100, 0]; }
-        else { this.resetPanels(); }
-        setTimeout(() => this.pokePdfResize(), 0);
-    }
-    toggleDensity() {
-        this.dense = !this.dense;
-        document.body.classList.toggle('compact', this.dense);
-        localStorage.setItem('density', this.dense ? 'compact' : 'comfortable');
-    }
-
-    loadTagTemplates() {
-        try { this.tagTemplates = JSON.parse(localStorage.getItem('tagTemplates') || '[]'); } catch { this.tagTemplates = []; }
-    }
-    saveTagTemplates() { localStorage.setItem('tagTemplates', JSON.stringify(this.tagTemplates)); }
-    saveTagTemplate() {
-        const name = (this.tplName || '').trim(); if (!name) return;
-        const tags = [...this.tagsArr];
-        const idx = this.tagTemplates.findIndex(t => t.name.toLowerCase() === name.toLowerCase());
-        if (idx >= 0) this.tagTemplates[idx].tags = tags;
-        else this.tagTemplates.push({ name, tags });
-        this.saveTagTemplates(); this.tplName = '';
-        this.toast('success', 'Şablon kaydedildi', name);
-    }
-    applyTagTemplate(i: number) {
-        const tpl = this.tagTemplates[i]; if (!tpl) return;
-        const set = new Set(this.tagsArr.map(x => x.toLowerCase()));
-        for (const t of tpl.tags) if (!set.has(t.toLowerCase())) this.tagsArr.push(t);
-        this.onDirty(); this.toast('info', 'Şablon uygulandı', tpl.name);
-    }
-    deleteTagTemplate(i: number) {
-        const name = this.tagTemplates[i]?.name || '';
-        this.tagTemplates.splice(i, 1); this.saveTagTemplates();
-        this.toast('warn', 'Şablon silindi', name);
-    }
-
-    snapshot() { this.lastSnapshot = { tagsJson: JSON.stringify(this.tagsArr), cat: this.cat ?? '', summary: this.summary ?? '' }; }
-    loadHistory() {
-        try { this.history = JSON.parse(localStorage.getItem(`detailHistory:${this.id}`) || '[]'); } catch { this.history = []; }
-    }
-    private pushHistory(msg: string) {
-        if (!msg) return;
-        const entry = { when: new Date().toLocaleString(), msg };
-        this.history.unshift(entry);
-        this.history = this.history.slice(0, 50);
-        localStorage.setItem(`detailHistory:${this.id}`, JSON.stringify(this.history));
-    }
-    clearHistory() { this.history = []; localStorage.removeItem(`detailHistory:${this.id}`); }
-
-    copyShareLink() {
-        const url = window.location.href;
-        if (navigator.clipboard?.writeText) {
-            navigator.clipboard.writeText(url);
-            this.toast('success', 'Bağlantı kopyalandı', url);
-        } else {
-            const a = document.createElement('textarea');
-            a.value = url; document.body.appendChild(a);
-            a.select(); document.execCommand('copy'); document.body.removeChild(a);
-            this.toast('success', 'Bağlantı kopyalandı', url);
-        }
-    }
-    exportJson() {
-        const data = {
-            id: this.id,
-            filename: this.doc?.filename,
-            uploadedAt: this.doc?.uploadedAt,
-            category: this.cat,
-            tags: [...this.tagsArr],
-            summary: this.summary
-        };
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-        a.download = `${this.doc?.filename || 'document'}.json`; a.click(); URL.revokeObjectURL(a.href);
-    }
-    copyTags() {
-        const str = this.joinTags(this.tagsArr);
-        if (!str) { this.toast('info', 'Kopyalanacak etiket yok'); return; }
-        navigator.clipboard?.writeText(str);
-        this.toast('success', 'Etiketler kopyalandı', str);
-    }
-    copy(text: string) { navigator.clipboard?.writeText(text); this.toast('info', 'Kopyalandı', text); }
-
-    @HostListener('document:keydown.control.s', ['$event'])
-    onSaveShortcut(ev: KeyboardEvent) { ev.preventDefault(); if (!this.savingAll) this.saveAll(); }
-    @HostListener('document:keydown.shift./', ['$event'])
-    onHelp(ev: KeyboardEvent) { ev.preventDefault(); this.helpOpen = true; }
-    @HostListener('window:beforeunload', ['$event'])
-    onBeforeUnload(event: BeforeUnloadEvent) {
-        if (this.isDirty) { event.preventDefault(); event.returnValue = ''; }
-    }
-
-    private toast(sev: 'success' | 'info' | 'warn' | 'error', sum?: string, det?: string) {
-        this.msg.add({ severity: sev, summary: sum, detail: det, life: 2600 });
-    }
-
-    private audioCache: Record<string, HTMLAudioElement | null> = {};
-    private getFx(name: 'send' | 'receive' | 'open' | 'error' | 'save'): HTMLAudioElement {
-        if (this.audioCache[name]) return this.audioCache[name]!;
-        const data = this.fxData[name];
-        const a = new Audio(`data:audio/wav;base64,${data}`);
-        const vol: Record<string, number> = {
-            send: 0.95, receive: 0.95, open: 0.9, error: 1.0, save: 1.0
-        };
-        a.volume = vol[name] ?? 0.9;
-        this.audioCache[name] = a;
-        return a;
-    }
-    playFx(name: 'send' | 'receive' | 'open' | 'error' | 'save') {
-        if (this.fxMuted) return;
-        try { const a = this.getFx(name); a.currentTime = 0; a.play(); } catch { /* sessiz */ }
-    }
-    saveFxPref() { localStorage.setItem('fxMuted', this.fxMuted ? '1' : '0'); }
-
-    private fxData = {
-        send: "UklGRkQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQwAAAAAAAB/f39/f39/f3///wAAgICAf39/fwAAgICAf39/fwAA",
-        receive: "UklGRlYAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YRIAAAAAAACAgP8AAP//AACAgP8AAAD/AP8A/wD/AP8A",
-        open: "UklGRlIAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YRAAAAAAAP8A/wAAAP8A/wD/AP8A/wAA",
-        error: "UklGRlQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YRIAAAAAAP8AAAAA/wAAAAD/AAAAAP8A",
-        save: "UklGRl8AAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YRIAAAAAAICAAAD/AP8A//8AAP8A//8AAP8A"
-    } as const;
-
-    helpOpen = false;
-
-    // —— Chat bölümü (seninkiyle aynı) ——
-    private scrollChatToBottom() {
+    if (!localStorage.getItem('chatPeeked')) {
+      setTimeout(() => {
+        this.chatOpen = true;
+        this.playFx('open');
         setTimeout(() => {
-            const el = this.floatChatLog?.nativeElement;
-            if (el) el.scrollTop = el.scrollHeight;
-        });
+          if (this.chatOpen && this.chatMessages.length === 0) this.chatOpen = false;
+          localStorage.setItem('chatPeeked', '1');
+        }, 2500);
+      }, 900);
     }
-    private persistChat() {
-        localStorage.setItem(`chatSession:${this.id}`, this.chatSessionId || '');
-        localStorage.setItem(`chatMessages:${this.id}`, JSON.stringify(this.chatMessages || []));
-    }
-    private restoreChatIfAny() {
-        const sid = localStorage.getItem(`chatSession:${this.id}`);
-        const msgsJson = localStorage.getItem(`chatMessages:${this.id}`);
-        if (sid) this.chatSessionId = sid;
-        if (msgsJson) {
-            try { this.chatMessages = JSON.parse(msgsJson) || []; } catch { this.chatMessages = []; }
-        }
-        if (this.chatSessionId && !msgsJson) {
-            this.chatBusy = true;
-            this.api.chatMessages(this.chatSessionId).subscribe({
-                next: (msgs: any[]) => {
-                    this.chatMessages = (msgs || []).map(m => ({
-                        role: (m.role === 'system' ? 'assistant' : m.role) as 'user' | 'assistant',
-                        content: m.content,
-                        createdAt: m.createdAt
-                    }));
-                    this.chatBusy = false;
-                    this.persistChat();
-                    this.scrollChatToBottom();
-                },
-                error: _ => { this.chatBusy = false; }
-            });
-        }
-    }
-    toggleChat() {
-        this.chatOpen = !this.chatOpen;
-        if (this.chatOpen) {
-            this.playFx('open');
-            if (!this.chatSessionId) this.startChat();
-            this.scrollChatToBottom();
-        }
-    }
-    startChat() {
-        if (!this.id) return;
-        this.chatBusy = true;
-        this.api.startChat(this.id).subscribe({
-            next: (res) => {
-                this.chatSessionId = res.session_id;
-                this.chatMessages = [];
-                this.chatBusy = false;
-                this.persistChat();
-                this.scrollChatToBottom();
-            },
-            error: _ => { this.chatBusy = false; this.toast('error', 'Sohbet başlatılamadı'); this.playFx('error'); }
-        });
-    }
-    sendChat() {
-        const text = (this.chatInput || '').trim();
-        if (!text || !this.chatSessionId) return;
 
-        const userMsg: ChatMsg = { role: 'user', content: text };
-        this.chatMessages = [...this.chatMessages, userMsg];
-        this.chatInput = '';
-        this.chatBusy = true;
+    this.applyPanelState();
+  }
+
+  ngOnDestroy(): void {
+    if (this.blobObjectUrl) URL.revokeObjectURL(this.blobObjectUrl);
+  }
+
+  /** Splitter logic */
+  private applyPanelState() {
+    const left = this.leftHidden ? 0 : this.clamp(this.savedLeft, 0, 40);
+    const right = this.rightHidden ? 0 : this.clamp(this.savedRight, 0, 40);
+    let middle = 100 - left - right;
+    if (middle < 20) {
+      const deficit = 20 - middle;
+      if (!this.leftHidden && left >= deficit) {
+        this.savedLeft = Math.max(0, left - deficit);
+      } else if (!this.rightHidden && right >= deficit) {
+        this.savedRight = Math.max(0, right - deficit);
+      }
+      middle = 100 - (this.leftHidden ? 0 : this.savedLeft) - (this.rightHidden ? 0 : this.savedRight);
+    }
+    this.panelSizes = [
+      this.leftHidden ? 0 : this.savedLeft,
+      middle,
+      this.rightHidden ? 0 : this.savedRight
+    ];
+    this.minSizes = [0, 20, 0];
+    localStorage.setItem('detailSplitter', JSON.stringify(this.panelSizes));
+    localStorage.setItem('detailLeft', String(this.savedLeft));
+    localStorage.setItem('detailRight', String(this.savedRight));
+    setTimeout(() => this.pokePdfResize(), 0);
+  }
+
+  private clamp(n: number, min: number, max: number) { return Math.max(min, Math.min(max, n)); }
+
+  saveSplitter(ev: any) {
+    if (ev?.sizes?.length === 3) {
+      const [l, m, r] = ev.sizes.map((x: number) => Math.round(x));
+      if (!this.leftHidden) this.savedLeft = l;
+      if (!this.rightHidden) this.savedRight = r;
+      this.panelSizes = [l, m, r];
+      localStorage.setItem('detailSplitter', JSON.stringify(this.panelSizes));
+      localStorage.setItem('detailLeft', String(this.savedLeft));
+      localStorage.setItem('detailRight', String(this.savedRight));
+      setTimeout(() => this.pokePdfResize(), 0);
+    }
+  }
+
+  toggleLeft() {
+    this.leftHidden = !this.leftHidden;
+    if (!this.leftHidden && this.panelSizes[1] < 40) this.savedLeft = 20;
+    this.zenMode = this.leftHidden && this.rightHidden;
+    this.applyPanelState();
+  }
+
+  toggleRight() {
+    this.rightHidden = !this.rightHidden;
+    if (!this.rightHidden && this.panelSizes[1] < 40) this.savedRight = 25;
+    this.zenMode = this.leftHidden && this.rightHidden;
+    this.applyPanelState();
+  }
+
+  resetPanels() {
+    this.leftHidden = false; this.rightHidden = false; this.zenMode = false;
+    this.savedLeft = 20; this.savedRight = 25;
+    this.applyPanelState();
+  }
+
+  toggleZen() {
+    this.zenMode = !this.zenMode;
+    this.leftHidden = this.zenMode;
+    this.rightHidden = this.zenMode;
+    this.applyPanelState();
+  }
+
+  /** PDF */
+  private loadPdfBlob(url: string) {
+    this.pdfError = false;
+    if (this.blobObjectUrl) { URL.revokeObjectURL(this.blobObjectUrl); this.blobObjectUrl = undefined; }
+    this.pdfBlobUrl = undefined;
+
+    this.http.get(url, { responseType: 'blob' }).subscribe({
+      next: (blob) => {
+        const mime = blob.type || 'application/pdf';
+        const pdfBlob = mime.includes('pdf') ? blob : new Blob([blob], { type: 'application/pdf' });
+        this.blobObjectUrl = URL.createObjectURL(pdfBlob);
+        this.pdfBlobUrl = this.san.bypassSecurityTrustResourceUrl(this.blobObjectUrl);
+      },
+      error: (err) => {
+        console.error('PDF blob error', err);
+        this.pdfError = true;
+      }
+    });
+  }
+
+  reloadPdf() {
+    const base = this.api.inlineUrl(this.id);
+    const sep = base.includes('?') ? '&' : '?';
+    const url = `${base}${sep}v=${Date.now()}`;
+    this.loadPdfBlob(url);
+  }
+  openInNewTab() { window.open(this.previewUrl, '_blank'); }
+  downloadPdf() { window.open(this.downloadUrl, '_blank'); }
+
+  /** Density toggle (MISSING BEFORE) */
+  toggleDensity() {
+    this.dense = !this.dense;
+    document.body.classList.toggle('compact', this.dense);
+    localStorage.setItem('density', this.dense ? 'compact' : 'comfortable');
+  }
+
+  /** Tags & templates (load/save helpers that template calls) */
+  loadTagTemplates() {
+    try { this.tagTemplates = JSON.parse(localStorage.getItem('tagTemplates') || '[]'); }
+    catch { this.tagTemplates = []; }
+  }
+  private saveTagTemplates() {
+    localStorage.setItem('tagTemplates', JSON.stringify(this.tagTemplates));
+  }
+  saveTagTemplate() {
+    const name = (this.tplName || '').trim();
+    if (!name) return;
+    const tags = [...this.tagsArr];
+    const idx = this.tagTemplates.findIndex(t => t.name.toLowerCase() === name.toLowerCase());
+    if (idx >= 0) this.tagTemplates[idx].tags = tags;
+    else this.tagTemplates.push({ name, tags });
+    this.saveTagTemplates();
+    this.tplName = '';
+    this.toast('success', 'Şablon kaydedildi', name);
+  }
+  applyTagTemplate(i: number) {
+    const tpl = this.tagTemplates[i];
+    if (!tpl) return;
+    const set = new Set(this.tagsArr.map(x => x.toLowerCase()));
+    for (const t of tpl.tags) if (!set.has(t.toLowerCase())) this.tagsArr.push(t);
+    this.onDirty();
+    this.toast('info', 'Şablon uygulandı', tpl.name);
+  }
+  deleteTagTemplate(i: number) {
+    const name = this.tagTemplates[i]?.name || '';
+    this.tagTemplates.splice(i, 1);
+    this.saveTagTemplates();
+    this.toast('warn', 'Şablon silindi', name);
+  }
+
+  /** Tag & summary misc */
+  joinTags(a: string[]): string { return (a || []).map(x => x.trim()).filter(Boolean).join(', '); }
+  addTag(t: string) {
+    if (!t) return;
+    if (!this.tagsArr.some(x => x.toLowerCase() === t.toLowerCase())) {
+      this.tagsArr = [...this.tagsArr, t];
+      this.onDirty();
+    }
+  }
+  searchTagSuggestions(ev: { query: string }) {
+    const q = ev?.query ?? '';
+    this.api.suggestKeywords(q, 12).subscribe({
+      next: (res: string[]) => {
+        const already = new Set(this.tagsArr.map(x => x.toLowerCase()));
+        this.tagSuggestions = (res || []).filter(x => !already.has(x.toLowerCase()));
+      },
+      error: () => { this.tagSuggestions = []; }
+    });
+  }
+
+  onDirty() { this.isDirty = true; this.autosave$.next(); }
+
+  async saveAll() {
+    if (!this.id) return;
+    const nextSnap = { tagsJson: JSON.stringify(this.tagsArr), cat: this.cat ?? '', summary: this.summary ?? '' };
+    const prev = this.lastSnapshot;
+    const patch: any = {};
+    if (prev.tagsJson !== nextSnap.tagsJson) patch.tags = this.tagsArr;
+    if (prev.cat !== nextSnap.cat) patch.category = this.cat || null;
+    if (prev.summary !== nextSnap.summary) patch.summary = this.summary || null;
+
+    if (!Object.keys(patch).length) { this.isDirty = false; return; }
+
+    this.savingAll = true;
+    try {
+      await firstValueFrom(this.api.patchDocument(this.id, patch));
+      this.lastSavedAt = new Date().toLocaleString();
+      this.isDirty = false;
+      this.lastSnapshot = nextSnap;
+      const msg = Object.keys(patch).map(k => k === 'tags' ? 'Etiketler' : k === 'category' ? 'Kategori' : 'Özet').join(', ') + ' güncellendi.';
+      this.toast('success', 'Kaydedildi', msg);
+      this.pushHistory(msg);
+      this.savedPulse = true; setTimeout(() => this.savedPulse = false, 800);
+
+      if (this.savingFromAuto) {
+        const now = Date.now();
+        if (now - this.lastSaveFxAt > 2500) {
+          this.playFx('save');
+          this.lastSaveFxAt = now;
+        }
+      }
+    } catch {
+      this.toast('error', 'Kayıt sırasında hata', 'Bazı alanlar kaydedilemedi.');
+      this.playFx('error');
+    } finally {
+      this.savingAll = false;
+    }
+  }
+
+  confirmReAnalyze() {
+    this.confirm.confirm({
+      header: 'Yeniden Analiz',
+      message: 'Bu belge için yeniden analiz başlatılsın mı?',
+      icon: 'pi pi-exclamation-triangle',
+      accept: () => this.reAnalyze()
+    });
+  }
+  reAnalyze() {
+    if (!this.id) return;
+    this.reanalyzing = true;
+    this.api.reanalyze(this.id).subscribe({
+      next: () => { this.reanalyzing = false; this.toast('success', 'Yeniden analiz başlatıldı', 'Sonuçlar hazır olunca sayfayı yenileyin.'); this.playFx('open'); },
+      error: () => { this.reanalyzing = false; this.toast('error', 'Yeniden analiz başarısız', 'Daha sonra tekrar deneyin.'); this.playFx('error'); }
+    });
+  }
+
+  onSummaryMetrics() {
+    const words = (this.summary || '').trim().split(/\s+/).filter(Boolean).length;
+    this.summaryWords = words;
+
+    const min = this.targetWords - 20;
+    const max = this.targetWords + 20;
+    let score = 0, hint = '';
+    if (words === 0) { score = 0; hint = 'Özet boş'; this.summaryColor = '#ef4444'; }
+    else if (words < min) { score = Math.round((words / Math.max(1, min)) * 70); hint = 'Kısa'; this.summaryColor = '#f59e0b'; }
+    else if (words > max) { score = Math.round((max / words) * 70); hint = 'Uzun'; this.summaryColor = '#f59e0b'; }
+    else { score = 100; hint = 'İdeal'; this.summaryColor = '#10b981'; }
+    this.summaryScore = Math.max(0, Math.min(100, score));
+    this.summaryHint = hint;
+  }
+
+  smartShorten() {
+    if (!this.summary) return;
+    const words = this.summary.trim().split(/\s+/);
+    this.summary = words.slice(0, this.targetWords).join(' ');
+    this.onSummaryMetrics(); this.onDirty();
+  }
+  smartExpand() {
+    if (!this.summary) return;
+    let s = this.summary.trim();
+    while (s.split(/\s+/).length < this.targetWords) {
+      s += ' Ayrıca,';
+      if (s.split(/\s+/).length >= this.targetWords) break;
+      s += ' bunun yanında';
+      if (s.split(/\s+/).length >= this.targetWords) break;
+      s += ' ve sonuç olarak';
+      break;
+    }
+    this.summary = s;
+    this.onSummaryMetrics(); this.onDirty();
+  }
+
+  @HostListener('document:keydown.control.k', ['$event'])
+  openPalette(ev?: KeyboardEvent) { ev?.preventDefault?.(); this.paletteOpen = true; this.paletteQuery = ''; this.filteredCommands = [...this.commands]; }
+  filterCommands() {
+    const q = (this.paletteQuery || '').toLowerCase();
+    this.filteredCommands = this.commands.filter(c => c.label.toLowerCase().includes(q));
+  }
+  runCommand(cmd: any) {
+    if (!cmd) return;
+    const id = cmd.id;
+    this.paletteOpen = false;
+    if (id === 'save') this.saveAll();
+    if (id === 'reanalyze') this.confirmReAnalyze();
+    if (id === 'download') this.downloadPdf();
+    if (id === 'openPreview') this.openInNewTab();
+    if (id === 'similar') this.toggleSimilarPanel(true);
+    if (id === 'shorten') { this.smartShorten(); }
+    if (id === 'expand') { this.smartExpand(); }
+    if (id === 'copyTags') { this.copyTags(); }
+    if (id === 'share') { this.copyShareLink(); }
+  }
+
+  toggleSimilarPanel(open: boolean) { this.similarOpen = open; if (open) this.loadSimilar(); }
+  loadSimilar() {
+    if (!this.doc) return;
+    this.similarLoading = true;
+    this.api.listFiles(undefined, 1000).subscribe(all => {
+      const mine = new Set(this.doc?.tags || []);
+      const sameCat = (d: DocInfo) => (d.category || '') === (this.doc?.category || '');
+      const score = (d: DocInfo) => {
+        let inter = 0; for (const t of d.tags || []) if (mine.has(t)) inter++;
+        return inter + (sameCat(d) ? 1.5 : 0);
+      };
+      this.similar = (all || [])
+        .filter(d => d.id !== this.id)
+        .map(d => ({ ...d, _sim: score(d) }))
+        .filter(d => (d._sim || 0) > 0)
+        .sort((a, b) => (b._sim || 0) - (a._sim || 0))
+        .slice(0, 8);
+      this.similarLoading = false;
+    }, _ => this.similarLoading = false);
+  }
+  openDoc(id: string) { window.open(`/documents/${id}`, '_blank'); }
+
+  snapshot() { this.lastSnapshot = { tagsJson: JSON.stringify(this.tagsArr), cat: this.cat ?? '', summary: this.summary ?? '' }; }
+  loadHistory() {
+    try { this.history = JSON.parse(localStorage.getItem(`detailHistory:${this.id}`) || '[]'); } catch { this.history = []; }
+  }
+  private pushHistory(msg: string) {
+    if (!msg) return;
+    const entry = { when: new Date().toLocaleString(), msg };
+    this.history.unshift(entry);
+    this.history = this.history.slice(0, 50);
+    localStorage.setItem(`detailHistory:${this.id}`, JSON.stringify(this.history));
+  }
+  clearHistory() { this.history = []; localStorage.removeItem(`detailHistory:${this.id}`); }
+
+  copyShareLink() {
+    const url = window.location.href;
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(url);
+      this.toast('success', 'Bağlantı kopyalandı', url);
+    } else {
+      const a = document.createElement('textarea');
+      a.value = url; document.body.appendChild(a);
+      a.select(); document.execCommand('copy'); document.body.removeChild(a);
+      this.toast('success', 'Bağlantı kopyalandı', url);
+    }
+  }
+  exportJson() {
+    const data = { id: this.id, filename: this.doc?.filename, uploadedAt: this.doc?.uploadedAt, category: this.cat, tags: [...this.tagsArr], summary: this.summary };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `${this.doc?.filename || 'document'}.json`; a.click(); URL.revokeObjectURL(a.href);
+  }
+  copyTags() {
+    const str = this.joinTags(this.tagsArr);
+    if (!str) { this.toast('info', 'Kopyalanacak etiket yok'); return; }
+    navigator.clipboard?.writeText(str);
+    this.toast('success', 'Etiketler kopyalandı', str);
+  }
+  copy(text: string) { navigator.clipboard?.writeText(text); this.toast('info', 'Kopyalandı', text); }
+
+  @HostListener('document:keydown.control.s', ['$event'])
+  onSaveShortcut(ev: KeyboardEvent) { ev.preventDefault(); if (!this.savingAll) this.saveAll(); }
+  @HostListener('document:keydown.shift./', ['$event'])
+  onHelp(ev: KeyboardEvent) { ev.preventDefault(); this.helpOpen = true; }
+  @HostListener('window:beforeunload', ['$event'])
+  onBeforeUnload(event: BeforeUnloadEvent) { if (this.isDirty) { event.preventDefault(); (event as any).returnValue = ''; } }
+
+  private toast(sev: 'success' | 'info' | 'warn' | 'error', sum?: string, det?: string) {
+    this.msg.add({ severity: sev, summary: sum, detail: det, life: 2600 });
+  }
+
+  private audioCache: Record<string, HTMLAudioElement | null> = {};
+  private getFx(name: 'send' | 'receive' | 'open' | 'error' | 'save'): HTMLAudioElement {
+    if (this.audioCache[name]) return this.audioCache[name]!;
+    const data = this.fxData[name];
+    const a = new Audio(`data:audio/wav;base64,${data}`);
+    const vol: Record<string, number> = { send: 0.95, receive: 0.95, open: 0.9, error: 1.0, save: 1.0 };
+    a.volume = vol[name] ?? 0.9;
+    this.audioCache[name] = a;
+    return a;
+  }
+  playFx(name: 'send' | 'receive' | 'open' | 'error' | 'save') {
+    if (this.fxMuted) return;
+    try { const a = this.getFx(name); a.currentTime = 0; a.play(); } catch {}
+  }
+  saveFxPref() { localStorage.setItem('fxMuted', this.fxMuted ? '1' : '0'); }
+
+  private fxData = {
+    send: "UklGRkQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQwAAAAAAAB/f39/f39/f3///wAAgICAf39/fwAAgICAf39/fwAA",
+    receive: "UklGRlYAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YRIAAAAAAACAgP8AAP//AACAgP8AAAD/AP8A/wD/AP8A",
+    open: "UklGRlIAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YRAAAAAAAP8A/wAAAP8A/wD/AP8A/wAA",
+    error: "UklGRlQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YRIAAAAAAP8AAAAA/wAAAAD/AAAAAP8A",
+    save: "UklGRl8AAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YRIAAAAAAICAAAD/AP8A//8AAP8A//8AAP8A"
+  } as const;
+
+  helpOpen = false;
+
+  /** Chat */
+  private scrollChatToBottom() {
+    setTimeout(() => {
+      const el = this.floatChatLog?.nativeElement;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+  }
+  private persistChat() {
+    localStorage.setItem(`chatSession:${this.id}`, this.chatSessionId || '');
+    localStorage.setItem(`chatMessages:${this.id}`, JSON.stringify(this.chatMessages || []));
+  }
+  private restoreChatIfAny() {
+    const sid = localStorage.getItem(`chatSession:${this.id}`);
+    const msgsJson = localStorage.getItem(`chatMessages:${this.id}`);
+    if (sid) this.chatSessionId = sid;
+    if (msgsJson) {
+      try { this.chatMessages = JSON.parse(msgsJson) || []; } catch { this.chatMessages = []; }
+    }
+    if (this.chatSessionId && !msgsJson) {
+      this.chatBusy = true;
+      this.api.chatMessages(this.chatSessionId).subscribe({
+        next: (msgs: any[]) => {
+          this.chatMessages = (msgs || []).map(m => ({
+            role: (m.role === 'system' ? 'assistant' : m.role) as 'user' | 'assistant',
+            content: m.content,
+            createdAt: m.createdAt
+          }));
+          this.chatBusy = false;
+          this.persistChat();
+          this.scrollChatToBottom();
+        },
+        error: _ => { this.chatBusy = false; }
+      });
+    }
+  }
+  toggleChat() {
+    this.chatOpen = !this.chatOpen;
+    if (this.chatOpen) {
+      this.playFx('open');
+      if (!this.chatSessionId) this.startChat();
+      this.scrollChatToBottom();
+    }
+  }
+  startChat() {
+    if (!this.id) return;
+    this.chatBusy = true;
+    this.api.startChat(this.id).subscribe({
+      next: (res) => {
+        this.chatSessionId = res.session_id;
+        this.chatMessages = [];
+        this.chatBusy = false;
         this.persistChat();
         this.scrollChatToBottom();
-        this.playFx('send');
+      },
+      error: _ => { this.chatBusy = false; this.toast('error', 'Sohbet başlatılamadı'); this.playFx('error'); }
+    });
+  }
+  sendChat() {
+    const text = (this.chatInput || '').trim();
+    if (!text || !this.chatSessionId) return;
 
-        this.api.chatAsk(this.chatSessionId, text).subscribe({
-            next: (res) => {
-                const ai: ChatMsg = { role: 'assistant', content: res.answer };
-                this.chatMessages = [...this.chatMessages, ai];
-                this.chatBusy = false;
-                this.persistChat();
-                this.scrollChatToBottom();
-                this.playFx('receive');
-            },
-            error: _ => { this.chatBusy = false; this.toast('error', 'Yanıt alınamadı'); this.playFx('error'); }
-        });
+    const userMsg: ChatMsg = { role: 'user', content: text };
+    const newMsgs = [...this.chatMessages, userMsg];
+    this.chatMessages = newMsgs;
+    this.chatInput = '';
+    this.chatBusy = true;
+    this.persistChat();
+    this.scrollChatToBottom();
+    this.playFx('send');
+
+    this.api.chatAsk(this.chatSessionId, text).subscribe({
+      next: (res) => {
+        const ai: ChatMsg = { role: 'assistant', content: res.answer };
+        this.chatMessages = [...newMsgs, ai];
+        this.chatBusy = false;
+        this.persistChat();
+        this.scrollChatToBottom();
+        this.playFx('receive');
+      },
+      error: _ => { this.chatBusy = false; this.toast('error', 'Yanıt alınamadı'); this.playFx('error'); }
+    });
+  }
+  resetChat() {
+    if (this.chatSessionId) {
+      localStorage.removeItem(`chatSession:${this.id}`);
+      localStorage.removeItem(`chatMessages:${this.id}`);
     }
-    resetChat() {
-        if (this.chatSessionId) {
-            localStorage.removeItem(`chatSession:${this.id}`);
-            localStorage.removeItem(`chatMessages:${this.id}`);
-        }
-        this.chatSessionId = '';
-        this.chatMessages = [];
-        this.chatInput = '';
-        this.playFx('open');
-    }
+    this.chatSessionId = '';
+    this.chatMessages = [];
+    this.chatInput = '';
+    this.playFx('open');
+  }
 }

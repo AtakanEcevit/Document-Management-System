@@ -54,5 +54,8 @@
       }
     }
   },
-  "defaultProject": "doc-analyzer-web"
+  "defaultProject": "doc-analyzer-web",
+  "cli": {
+    "analytics": "c54bc3a4-a1df-49ce-8626-73cebbdbebd7"
+  }
 }
