@@ -199,9 +199,6 @@ Contributions, issues, and feature requests are welcome.
 3. Open a PR and fill out the template
 4. Link any related issues
 
-> \[!TIP]
-> Small, focused PRs are easier to review.
-
 ---
 
 ## 📜 License
