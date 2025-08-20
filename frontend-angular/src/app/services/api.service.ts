@@ -29,6 +29,7 @@ export interface DocInfo {
 }
 
 export interface Paged<T> { items: T[]; total: number; }
+export interface ChatMessage { role: 'user' | 'assistant' | 'system'; content: string; createdAt?: string; }
 
 /** Build HttpParams from a plain object */
 function toParams(obj: Record<string, any> = {}): HttpParams {
@@ -138,6 +139,16 @@ export class ApiService {
         const params = toParams({ prefix, limit });
         return this.http.get<string[]>(`${this.BASE}/documents/suggest/tags`, { params })
             .pipe(catchError(_ => of([])));
+    }
+    // ---------- Chat (new) ----------
+    startChat(documentId: string): Observable<{ session_id: string }> {
+        return this.http.post<{ session_id: string }>(`${this.BASE}/documents/${encodeURIComponent(documentId)}/chat/start`, {});
+    }
+    chatMessages(sessionId: string): Observable<ChatMessage[]> {
+        return this.http.get<ChatMessage[]>(`${this.BASE}/chat/${encodeURIComponent(sessionId)}/messages`);
+    }
+    chatAsk(sessionId: string, message: string): Observable<{ session_id: string; answer: string }> {
+        return this.http.post<{ session_id: string; answer: string }>(`${this.BASE}/chat/${encodeURIComponent(sessionId)}/ask`, { message });
     }
 
     // ---------- Utils ----------
