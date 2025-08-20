@@ -5,7 +5,9 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
+
 import { ApiService, DocInfo } from '../../services/api.service';
+
 import { SplitterModule } from 'primeng/splitter';
 import { AutoCompleteModule } from 'primeng/autocomplete';
 import { DropdownModule } from 'primeng/dropdown';
@@ -26,6 +28,7 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { TabViewModule } from 'primeng/tabview';
 import { SliderModule } from 'primeng/slider';
 import { ChipModule } from 'primeng/chip';
+
 import { MessageService, ConfirmationService, MenuItem } from 'primeng/api';
 import { firstValueFrom, Subject, debounceTime } from 'rxjs';
 
