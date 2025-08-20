@@ -2,17 +2,23 @@
 
 from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Any
 from datetime import datetime, timezone
-import hashlib, os
+import hashlib, os, uuid, re
+import urllib.parse
 
 from app.services.db_pg import get_conn, ensure_schema
 from app.services.pdf_utils import extract_text_from_pdf
-from app.services.groq_utils import extract_keywords, summarize_text, predict_category
-from psycopg.rows import dict_row  # psycopg3 dict rows
+from app.services.groq_utils import extract_keywords, summarize_text, predict_category, _chat
+from psycopg.rows import dict_row # psycopg3 dict rows
+
+
+import mimetypes
+mimetypes.add_type("text/javascript", ".mjs")
+mimetypes.add_type("text/javascript", ".cjs")  # (varsayılan değilse)
 
 APP_ENV = os.getenv("APP_ENV", "dev")
 STORAGE_ROOT = os.getenv("STORAGE_ROOT", "/app/uploads")
@@ -30,7 +36,7 @@ if not origins:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["Content-Disposition"],
@@ -74,6 +80,25 @@ class PagedOut(BaseModel):
     total: int
     offset: int
     limit: int
+
+
+# --- Chat models ---
+class ChatStartOut(BaseModel):
+    session_id: str
+
+class ChatMessageOut(BaseModel):
+    role: str
+    content: str
+    createdAt: str
+
+class ChatAskIn(BaseModel):
+    message: str
+
+
+class ChatAskOut(BaseModel):
+    session_id: str
+    answer: str
+
 
 
 def to_iso_utc(dt_val: Optional[Union[str, datetime]]) -> str:
@@ -294,12 +319,12 @@ async def upload_file(file: UploadFile = File(...)):
         raise HTTPException(400, "Sadece PDF kabul edilir.")
     data = await file.read()
 
-    file_hash = hashlib.md5(data).hexdigest()  # FE id beklentisi ile uyumlu
+    file_hash = hashlib.md5(data).hexdigest()
     abs_path = os.path.join(STORAGE_ROOT, f"{file_hash}.pdf")
     with open(abs_path, "wb") as f:
         f.write(data)
 
-    # Analiz (hata olursa kayıt yine de oluşsun)
+    # Analiz
     text, tags_csv, summary, category = "", "", None, None
     try:
         text = extract_text_from_pdf(data, max_pages=10) or ""
@@ -313,19 +338,23 @@ async def upload_file(file: UploadFile = File(...)):
     now_dt = datetime.now(timezone.utc)
 
     with get_conn() as con, con.cursor(row_factory=dict_row) as cur:
+        # ✅ fulltext’i de ekle, parametre sayısı eşleşsin
         cur.execute(
             """
-            INSERT INTO documents (file_hash, filename, uploaded_at, keywords, summary, category, file_path)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO documents
+              (file_hash, filename, uploaded_at, keywords, summary, category, fulltext, file_path)
+            VALUES
+              (%s,        %s,       %s,          %s,       %s,      %s,       %s,       %s)
             ON CONFLICT (file_hash) DO UPDATE SET
-              filename=EXCLUDED.filename,
-              uploaded_at=EXCLUDED.uploaded_at,
-              keywords=EXCLUDED.keywords,
-              summary=EXCLUDED.summary,
-              category=EXCLUDED.category,
-              file_path=EXCLUDED.file_path
+              filename   = EXCLUDED.filename,
+              uploaded_at= EXCLUDED.uploaded_at,
+              keywords   = EXCLUDED.keywords,
+              summary    = EXCLUDED.summary,
+              category   = EXCLUDED.category,
+              fulltext   = EXCLUDED.fulltext,
+              file_path  = EXCLUDED.file_path
             """,
-            (file_hash, file.filename, now_dt, tags_csv, summary, category, abs_path)
+            (file_hash, file.filename, now_dt, tags_csv, summary, category, text, abs_path)
         )
         con.commit()
 
@@ -339,6 +368,7 @@ async def upload_file(file: UploadFile = File(...)):
 # -------------------------------------------------
 # İndirme / Önizleme
 # -------------------------------------------------
+
 @api.get("/files/{file_hash}/download")
 def download(file_hash: str, disposition: str = "attachment"):
     disp = "inline" if str(disposition).lower() == "inline" else "attachment"
@@ -352,22 +382,23 @@ def download(file_hash: str, disposition: str = "attachment"):
     if not r or not r["file_path"] or not os.path.exists(r["file_path"]):
         raise HTTPException(404, "Dosya bulunamadı")
 
+    # Dosya adını temizle
     fname = (r["filename"] or f"{file_hash}.pdf").replace("\n", " ").replace('"', "")
+    quoted = urllib.parse.quote(fname)
 
-    def _iter():
-        with open(r["file_path"], "rb") as f:
-            while True:
-                chunk = f.read(8192)
-                if not chunk:
-                    break
-                yield chunk
-
-    return StreamingResponse(
-        _iter(),
+    resp = FileResponse(
+        path=r["file_path"],
         media_type="application/pdf",
-        headers={"Content-Disposition": f'{disp}; filename="{fname}"'}
+        filename=fname  # Bu kullanıcıya doğru adla indirtiyor
     )
 
+    # Content-Disposition: hem ASCII fallback hem UTF-8 uyumlu
+    resp.headers["Content-Disposition"] = (
+        f"{disp}; filename*=UTF-8''{quoted}; filename=\"{fname.encode('ascii','ignore').decode('ascii') or 'file.pdf'}\""
+    )
+    resp.headers["Accept-Ranges"] = "bytes"
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 # -------------------------------------------------
 # Yeniden analiz
 # -------------------------------------------------
@@ -393,8 +424,8 @@ def _reanalyze_now(file_hash: str):
             category = predict_category(text) or None
 
             cur.execute(
-                "UPDATE documents SET keywords=%s, summary=%s, category=%s WHERE file_hash=%s",
-                (tags_csv, summary, category, file_hash)
+                "UPDATE documents SET keywords=%s, summary=%s, category=%s , fulltext=%s WHERE file_hash=%s",
+                (tags_csv, summary, category, text, file_hash)
             )
             con.commit()
             return True, None
@@ -412,6 +443,147 @@ def reanalyze(id: str):
             (id,)
         ).fetchone()
     return row_to_document(r).dict()
+
+# -------------------------------------------------
+# Basit bağlam bulucu (fulltext üzerinden)
+# -------------------------------------------------
+def _split_into_spans(text: str, span_chars: int = 900) -> List[str]:
+    # Paragraf bazlı kır; çok uzun paragrafları böl
+    paras = re.split(r"\n{2,}", text or "")
+    spans: List[str] = []
+    for p in paras:
+        p = p.strip()
+        if not p:
+            continue
+        if len(p) <= span_chars:
+            spans.append(p)
+        else:
+            for i in range(0, len(p), span_chars):
+                spans.append(p[i:i+span_chars])
+    return spans
+
+
+
+
+def _score_span(span: str, q: str) -> int:
+    # Çok basit bir anahtar-kelime skoru
+    tokens_q = re.findall(r"[\wçğıöşü]+", q.lower())
+    s = span.lower()
+    score = 0
+    for t in set(tokens_q):
+        if len(t) <= 2:
+            continue
+        score += s.count(t)
+    return score
+
+
+
+def _context_for_question(doc_id: str, question: str, max_spans: int = 4) -> str:
+    with get_conn() as con, con.cursor(row_factory=dict_row) as cur:
+        r = cur.execute("SELECT fulltext FROM documents WHERE file_hash=%s", (doc_id,)).fetchone()
+    fulltext = (r or {}).get("fulltext") or ""
+    spans = _split_into_spans(fulltext)
+    scored = sorted(spans, key=lambda sp: _score_span(sp, question), reverse=True)[:max_spans]
+    context = "\n\n".join(scored)
+    return context
+
+
+# -------------------------------------------------
+# Sohbet uçları
+# -------------------------------------------------
+@api.post("/documents/{id}/chat/start", response_model=ChatStartOut)
+def chat_start(id: str):
+    # Belge var mı?
+    with get_conn() as con, con.cursor(row_factory=dict_row) as cur:
+        exists = cur.execute("SELECT 1 FROM documents WHERE file_hash=%s", (id,)).fetchone()
+        if not exists:
+            raise HTTPException(404, "Belge bulunamadı")
+        sid = uuid.uuid4().hex
+        cur.execute(
+        "INSERT INTO chat_sessions (id, document_id, title) VALUES (%s, %s, %s)",
+        (sid, id, "Sohbet")
+        )
+        con.commit()
+    return {"session_id": sid}
+
+
+@api.get("/chat/{sid}/messages", response_model=List[ChatMessageOut])
+def chat_messages(sid: str):
+    with get_conn() as con, con.cursor(row_factory=dict_row) as cur:
+        rows = cur.execute(
+        "SELECT role, content, created_at FROM chat_messages WHERE session_id=%s ORDER BY created_at ASC",
+        (sid,)
+    ).fetchall()
+    return [
+        {"role": r["role"], "content": r["content"], "createdAt": to_iso_utc(r["created_at"]) }
+        for r in (rows or [])
+    ]
+
+@api.post("/chat/{sid}/ask", response_model=ChatAskOut)
+def chat_ask(sid: str, body: ChatAskIn):
+    q = (body.message or "").strip()
+    if not q:
+        raise HTTPException(400, "Mesaj boş olamaz")
+
+
+    with get_conn() as con, con.cursor(row_factory=dict_row) as cur:
+        sess = cur.execute("SELECT document_id FROM chat_sessions WHERE id=%s", (sid,)).fetchone()
+        if not sess:
+            raise HTTPException(404, "Sohbet bulunamadı")
+        doc_id = sess["document_id"]
+
+
+    context = _context_for_question(doc_id, q)
+
+
+    sys = {
+        "role": "system",
+        "content": (
+        "Sen bir belge-asistanısın. Yalnızca verilen bağlamdan yararlanarak Türkçe yanıt ver. "
+        "Bağlamda yoksa \"Bu bilgiyi belgeden çıkaramadım\" de."
+        ),
+    }
+    usr = {
+        "role": "user",
+        "content": f"Bağlam:\n\n{context}\n\nSoru: {q}",
+    }
+    answer = _chat([sys, usr]) or "Bu bilgiyi belgeden çıkaramadım"
+
+
+    # Mesajları kaydet
+    with get_conn() as con, con.cursor(row_factory=dict_row) as cur:
+        cur.execute(
+            "INSERT INTO chat_messages (session_id, role, content) VALUES (%s, %s, %s)",
+            (sid, "user", q)
+        )
+        cur.execute(
+            "INSERT INTO chat_messages (session_id, role, content) VALUES (%s, %s, %s)",
+            (sid, "assistant", answer)
+        )
+        con.commit()
+
+
+    return {"session_id": sid, "answer": answer}
+
+# main.py
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    resp = await call_next(request)
+    # Worker ve iframe için izinler
+    resp.headers["Content-Security-Policy"] = (
+        "default-src 'self' data: blob:; "
+        "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:; "
+        "worker-src 'self' blob:; "
+        "img-src 'self' data: blob:; "
+        "style-src 'self' 'unsafe-inline'; "
+        "connect-src 'self' http://localhost:8080 http://localhost:4200 data: blob:; "
+        "frame-src 'self' data: blob:;"
+    )
+    # (İsteğe bağlı) PDF.js bazı ortamlarda bunları sever:
+    resp.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    resp.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
+    return resp
+
 
 # Router’ı bağla
 app.include_router(api)
