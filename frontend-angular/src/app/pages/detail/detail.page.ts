@@ -1,12 +1,11 @@
 // src/app/pages/detail/detail.page.ts
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-
+import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { ApiService, DocInfo } from '../../services/api.service';
-
 import { SplitterModule } from 'primeng/splitter';
 import { AutoCompleteModule } from 'primeng/autocomplete';
 import { DropdownModule } from 'primeng/dropdown';
@@ -27,15 +26,16 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { TabViewModule } from 'primeng/tabview';
 import { SliderModule } from 'primeng/slider';
 import { ChipModule } from 'primeng/chip';
-
 import { MessageService, ConfirmationService, MenuItem } from 'primeng/api';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subject, debounceTime } from 'rxjs';
+
+type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string };
 
 @Component({
     standalone: true,
     selector: 'app-detail',
     imports: [
-        CommonModule, FormsModule,
+        CommonModule, FormsModule, HttpClientModule,
         SplitterModule, AutoCompleteModule, DropdownModule,
         InputTextModule, InputTextareaModule,
         ButtonModule, ToastModule, SkeletonModule,
@@ -45,41 +45,249 @@ import { firstValueFrom } from 'rxjs';
     ],
     providers: [MessageService, ConfirmationService],
     styles: [`
+    /* ---------- Design tokens ---------- */
+    :host{
+      --brand-h: 256; --brand-s: 86%; --brand-l: 64%;
+      --brand: hsl(var(--brand-h) var(--brand-s) var(--brand-l));
+      --accent: hsl(198 86% 62%);
+      --surface-0:#0b0f14; --surface-1:#10161f; --surface-2:#121a25;
+      --border: rgba(255,255,255,.08);
+      --muted: #a3b0c2;
+      --radius: 12px;
+      --elev-1: 0 1px 2px rgba(0,0,0,.18), 0 10px 26px rgba(0,0,0,.22);
+      --elev-2: 0 2px 8px rgba(0,0,0,.24), 0 20px 36px rgba(0,0,0,.24);
+      color-scheme: dark; /* uygulama dark ise; light ise 'light' yap */
+    }
+
+    .detail-bg{
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(130,103,255,.08), transparent 60%),
+        radial-gradient(900px 520px at 110% 10%, rgba(47,159,255,.07), transparent 50%),
+        var(--surface-0);
+      position:relative; min-height: 100%; display:block;
+      padding:.5rem;
+    }
+    .detail-bg::before{
+      content:''; position:fixed; inset:-20vh; pointer-events:none; z-index:-1;
+      background-image: url("data:image/svg+xml;utf8,\
+      <svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'>\
+      <filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='2' stitchTiles='stitch'/></filter>\
+      <rect width='120' height='120' filter='url(%23n)' opacity='0.012'/></svg>");
+      background-size: 240px 240px;
+    }
+
     .header {
+      position: sticky; top: 0; z-index: 6; backdrop-filter: blur(8px);
       display:flex; align-items:center; gap:.75rem; padding:.75rem;
-      border:1px solid rgba(255,255,255,.08); border-radius:.9rem;
+      border:1px solid var(--border); border-radius:.9rem;
       background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
       box-shadow: 0 6px 18px rgba(0,0,0,.2), 0 12px 32px rgba(0,0,0,.18);
-      position: sticky; top: 0; z-index: 6; backdrop-filter: blur(8px);
+      flex-wrap: wrap;
+    }
+    .header .saving-stripe{
+      position:absolute; left:0; right:0; bottom:-2px; height:2px;
+      background: linear-gradient(90deg, var(--brand), var(--accent));
+      border-radius:2px; opacity:.95;
+      box-shadow: 0 0 18px color-mix(in hsl, var(--brand), white 15%);
     }
     .hdr-title { font-weight:800; display:flex; align-items:center; gap:.5rem; min-width:0; }
-    .hdr-title .name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .hdr-title .name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width: 40vw; }
     .meta { opacity:.8; }
     .grow { flex: 1 1 auto; }
+
+    .quick-stats{ display:flex; gap:.35rem; margin-right:.5rem; flex-wrap:wrap; }
+    .pill{
+      display:inline-flex; align-items:center; gap:.35rem; padding:.2rem .55rem;
+      border-radius:999px; font-weight:600; color:#dfe9f7; opacity:.9;
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+      border:1px solid var(--border);
+    }
+    @media (max-width: 1100px){
+      .quick-stats{ display:none; }
+      .header .meta.small{ display:none; }
+    }
+
     .panel-pad { padding: .75rem; height: 100%; box-sizing: border-box; }
     .field { display:grid; gap:.4rem; margin-bottom:.9rem; }
     .label { opacity:.85; font-size:.94rem; }
     .cardish{
-      background: rgba(255,255,255,.02);
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: .9rem;
-      box-shadow: 0 1px 2px rgba(0,0,0,.25), 0 10px 20px rgba(0,0,0,.15);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--elev-1);
       transition: box-shadow .2s ease, transform .08s ease, border-color .2s ease;
+      animation: pop .18s ease;
     }
     .cardish:hover{ box-shadow: 0 6px 18px rgba(0,0,0,.25), 0 12px 32px rgba(0,0,0,.25); }
     .btns { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; }
     .small { font-size:.9rem; }
     .grid-auto-fit{ display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
-    .chip-trend { cursor:pointer; }
-    .chip-trend:hover{ transform: translateY(-1px); }
-    .splitter-controls { display:flex; gap:.4rem; align-items:center; }
+    .splitter-controls { display:flex; gap:.4rem; align-items:center; flex-wrap: wrap; }
+
     .statusbar {
       display:flex; align-items:center; gap:.75rem; padding:.35rem .6rem; margin-top:.5rem;
-      border:1px dashed rgba(255,255,255,.08); border-radius:.6rem; font-size:.9rem;
+      border:1px dashed var(--border); border-radius:.6rem; font-size:.9rem;
     }
-    .tabpad { padding-top:.25rem; }
+
+    *::-webkit-scrollbar{ width:10px; height:10px;}
+    *::-webkit-scrollbar-thumb{
+      background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.08));
+      border: 2px solid transparent; border-radius: 999px; background-clip: padding-box;
+    }
+    *::-webkit-scrollbar-track{ background: transparent;}
+
+    :host ::ng-deep .p-splitter-panel { min-width: 0; min-height: 0; display:flex; }
+    :host ::ng-deep .p-splitter-gutter{ background: transparent; }
+    :host ::ng-deep .p-splitter-gutter-handle{
+      width: 4px; border-radius: 999px;
+      background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.06));
+      transition: transform .15s ease, background .2s ease;
+    }
+    :host ::ng-deep .p-splitter-gutter:hover .p-splitter-gutter-handle{
+      transform: scaleX(1.2); background: color-mix(in hsl, var(--brand), white 10%);
+    }
+
+    .right-pane { display: flex; flex-direction: column; min-height: 0; }
+    :host ::ng-deep .right-pane .p-tabview { height: 100%; display:flex; flex-direction: column; min-height: 0; }
+    :host ::ng-deep .right-pane .p-tabview-panels {
+      flex: 1 1 auto; min-height: 0;
+      overflow: hidden;
+      padding-right: .25rem;
+      background:
+        radial-gradient(60% 40% at 60% 0%, rgba(255,255,255,.03), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+      border-radius: .6rem;
+    }
+
+    :host ::ng-deep .p-tabview-panel{ min-height:0; }
+    :host ::ng-deep .p-tabview-panel[hidden]{ display:none !important; }
+    :host ::ng-deep .p-tabview-panel:not([hidden]){
+      height:100% !important;
+      display:flex !important;
+      flex-direction:column;
+      min-height:0;
+    }
+
+    .tab-scroll{ flex:1 1 auto; min-height:0; overflow:auto; }
+
+    :host ::ng-deep .p-tabview-nav li.p-highlight .p-tabview-nav-link{
+      color: #fff; font-weight: 700;
+      background: linear-gradient(180deg, color-mix(in hsl, var(--brand), #000 10%), transparent);
+      border-bottom: 2px solid var(--brand);
+      position:relative;
+    }
+    :host ::ng-deep .p-tabview-nav li.p-highlight .p-tabview-nav-link::after{
+      content:''; position:absolute; left:10%; right:10%; bottom:-2px; height:2px;
+      background: linear-gradient(90deg, var(--brand), var(--accent));
+      box-shadow:0 0 14px color-mix(in hsl, var(--brand), white 25%);
+      border-radius:2px;
+    }
+
+    .center-pane{
+      display:flex;
+      align-items:stretch;
+      justify-content:stretch;
+      min-height:0;
+      background:
+        radial-gradient(40% 50% at 60% 0%, rgba(255,255,255,.04), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+    }
+
+    .pdf-frame{ width:100%; height:100%; border:0; border-radius:.6rem; }
+
+    .viewer-toolbar{
+      position:absolute; right: 1rem; bottom: 1rem; z-index: 5;
+      display:flex; align-items:center; gap:.4rem;
+      padding:.35rem; border-radius: 999px;
+      background: rgba(10,14,20,.55); backdrop-filter: blur(8px);
+      border:1px solid var(--border); box-shadow: var(--elev-2);
+    }
+    .viewer-toolbar .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      width:34px; height:34px; border-radius: 999px;
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      border:1px solid var(--border); cursor:pointer;
+      transition: transform .06s ease, background .2s ease;
+    }
+    .viewer-toolbar .btn:hover{ transform: translateY(-1px); }
+    .viewer-toolbar .badge{
+      padding:.15rem .5rem; border-radius:999px; font-size:.85rem;
+      background: rgba(255,255,255,.06); border:1px solid var(--border);
+    }
+
+    .chat-fab-wrap{ position: fixed; right: 18px; bottom: 18px; z-index: 50; display:flex; align-items:center; gap:12px; }
+    .chat-fab{
+      position: relative; width: 56px; height: 56px; border-radius: 999px;
+      display:flex; align-items:center; justify-content:center;
+      background: linear-gradient(180deg, color-mix(in hsl, var(--brand), #000 8%), color-mix(in hsl, var(--brand), #000 20%));
+      border: 1px solid var(--border); box-shadow: 0 16px 48px rgba(0,0,0,.45);
+      cursor:pointer; transition: transform .08s ease;
+    }
+    .chat-fab:hover{ transform: translateY(-1px); }
+    .chat-fab i{ font-size: 1.25rem; color: #eef2ff; }
+    .fab-attn{ animation: wiggle 2.6s ease-in-out 2; }
+    @keyframes wiggle{ 0%,100%{ transform: translateY(0) } 6%{ transform: translateY(-2px) } 12%{ transform: translateY(0) } 18%{ transform: translateY(-1px) } 24%{ transform: translateY(0) } }
+    .fab-ping{ position:absolute; inset:0; border-radius:999px; border: 2px solid var(--accent); animation: fabPing 1.6s ease-out infinite; pointer-events:none; }
+    @keyframes fabPing{ 0%{ transform: scale(1); opacity:.6; } 80%{ transform: scale(1.6); opacity:0; } 100%{ transform: scale(1.8); opacity:0; } }
+    .fab-coach{
+      position: relative; padding:.45rem .6rem; border-radius:10px; font-weight:700;
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      border:1px solid var(--border); box-shadow: 0 10px 28px rgba(0,0,0,.4); color:#eef2ff; user-select:none; animation: coachIn .18s ease-out;
+    }
+    .fab-coach::after{ content:''; position:absolute; right:-8px; top:50%; transform: translateY(-50%); width:0; height:0; border-left: 8px solid rgba(255,255,255,.10); border-top: 8px solid transparent; border-bottom: 8px solid transparent; filter: drop-shadow(0 0 0 var(--border)); }
+    @keyframes coachIn{ from{ transform: translateY(4px); opacity:.7 } to{ transform:none; opacity:1 } }
+
+    .chat-float{
+      position: fixed; right: 18px; bottom: calc(18px + 56px + 12px); z-index: 40;
+      width: 380px; max-width: calc(100vw - 32px);
+      height: 480px; max-height: calc(100vh - 140px);
+      display:flex; flex-direction:column;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border: 1px solid var(--border); border-radius: 14px;
+      box-shadow: 0 22px 60px rgba(0,0,0,.55), 0 8px 26px rgba(0,0,0,.35);
+      overflow: hidden;
+    }
+    .chat-head{ display:flex; align-items:center; gap:.5rem; padding:.5rem .6rem; background: linear-gradient(180deg, color-mix(in hsl, var(--brand), #000 18%), transparent); border-bottom:1px solid var(--border); }
+    .chat-head .title{ font-weight: 800; }
+    .chat-head .grow{ flex:1 1 auto; }
+    .chat-head .iconbtn{ width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center;
+      border-radius:999px; border:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06)); cursor:pointer; }
+    .chat-body{ flex:1 1 auto; min-height:0; overflow:auto; padding:.5rem; display:flex; flex-direction:column; gap:.5rem; }
+    .chat-input{ display:flex; gap:.5rem; align-items:flex-end; padding:.5rem; border-top:1px solid var(--border); background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)); }
+
+    .bubble{
+      padding:.55rem .7rem; border-radius:10px; max-width:90%;
+      box-shadow: 0 2px 10px rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.12);
+      white-space: pre-wrap;
+      backdrop-filter: blur(6px);
+      transition: box-shadow .18s ease, transform .12s ease;
+    }
+    .bubble-user{ margin-left:auto; background: linear-gradient(180deg, rgba(56,189,248,.12), rgba(56,189,248,.05)); border-color: rgba(56,189,248,.25); }
+    .bubble-ai{ margin-right:auto; background: linear-gradient(180deg, rgba(124,77,255,.10), rgba(124,77,255,.04)); border-color: rgba(124,77,255,.25); }
+    .bubble-user:hover, .bubble-ai:hover{ box-shadow: 0 6px 22px rgba(0,0,0,.28); }
+
+    .typing { display:inline-flex; gap:.3rem; align-items:center; }
+    .typing .dot{ width:6px; height:6px; border-radius:999px; background: #dbeafe; opacity:.9; animation: bounce 1s infinite ease-in-out; }
+    .typing .dot:nth-child(2){ animation-delay: .15s;}
+    .typing .dot:nth-child(3){ animation-delay: .3s;}
+    @keyframes bounce{ 0%, 80%, 100%{ transform: translateY(0); opacity:.6; } 40%{ transform: translateY(-4px); opacity:1; } }
+
+    .enter-left{ animation: enterL .15s ease-out; }
+    .enter-right{ animation: enterR .15s ease-out; }
+    @keyframes enterL{ from{ transform: translateX(-6px); opacity:.7 } to{ transform:none; opacity:1 } }
+    @keyframes enterR{ from{ transform: translateX(6px); opacity:.7 } to{ transform:none; opacity:1 } }
+
+    @keyframes greenPulse { from{ box-shadow:0 0 0 0 rgba(16,185,129,.35);} to{ box-shadow:0 0 0 14px rgba(16,185,129,0);} }
+    .p-button.pulse{ animation: greenPulse .8s ease-out 1; }
+
+    @keyframes pop { from{ transform: scale(.98); opacity:.8 } to{ transform: scale(1); opacity:1 } }
+
+    @media (prefers-reduced-motion: reduce){
+      *{ animation: none !important; transition: none !important; }
+    }
   `],
     template: `
+  <div class="detail-bg">
     <p-toast></p-toast>
     <p-confirmDialog></p-confirmDialog>
 
@@ -94,27 +302,35 @@ import { firstValueFrom } from 'rxjs';
       <span class="meta small">Yüklendi: {{ doc?.uploadedAt }}</span>
       <span class="grow"></span>
 
+      <div class="quick-stats small">
+        <span class="pill"><i class="pi pi-file"></i> {{pageCount || '—'}} syf</span>
+        <span class="pill" *ngIf="cat"><i class="pi pi-folder"></i> {{cat}}</span>
+        <span class="pill"><i class="pi pi-tags"></i> {{tagsArr?.length || 0}}</span>
+      </div>
+
       <div class="splitter-controls small meta">
         <button pButton icon="pi pi-chevron-left" class="p-button-text p-button-sm" pTooltip="Sol paneli gizle/göster" (click)="toggleLeft()"></button>
         <button pButton icon="pi pi-chevron-right" class="p-button-text p-button-sm" pTooltip="Sağ paneli gizle/göster" (click)="toggleRight()"></button>
         <button pButton icon="pi pi-window-maximize" class="p-button-text p-button-sm" pTooltip="Panel boyutlarını sıfırla" (click)="resetPanels()"></button>
         <button pButton [outlined]="!zenMode" icon="pi pi-eye" label="Zen" class="p-button-sm" (click)="toggleZen()" pTooltip="PDF'e odaklan (Zen)"></button>
+        <button pButton [outlined]="!dense" icon="pi pi-compress" class="p-button-sm" label="{{dense ? 'Rahat' : 'Sıkışık'}}" (click)="toggleDensity()" pTooltip="Yoğunluk"></button>
       </div>
 
-      <!-- TEK KAYDET -->
       <button pButton label="Kaydet" icon="pi pi-check"
               class="p-button-sm p-button-success" (click)="saveAll()"
-              [disabled]="savingAll || !isDirty" pTooltip="Ctrl+S"></button>
+              [ngClass]="{'pulse': savedPulse}" [disabled]="savingAll || !isDirty"
+              pTooltip="Ctrl+S"></button>
+
+      <div *ngIf="savingAll" class="saving-stripe"></div>
     </div>
 
     <!-- 3-Pane -->
-    <p-splitter
-      styleClass="p-mt-3"
-      [gutterSize]="8"
-      [panelSizes]="panelSizes"
-      [minSizes]="[16,40,20]"
-      (onResizeEnd)="saveSplitter($event)"
-      [style]="{height: 'calc(100vh - 250px)'}">
+    <p-splitter styleClass="p-mt-3"
+                [gutterSize]="8"
+                [panelSizes]="panelSizes"
+                [minSizes]="[16,40,20]"
+                (onResizeEnd)="saveSplitter($event)"
+                [style]="{height: 'calc(100vh - 240px)'}">
 
       <!-- Sol -->
       <ng-template pTemplate>
@@ -145,25 +361,41 @@ import { firstValueFrom } from 'rxjs';
         </div>
       </ng-template>
 
-      <!-- Orta: PDF -->
+      <!-- Orta: PDF (Blob + native viewer) -->
       <ng-template pTemplate>
-        <div class="panel-pad cardish">
-          <ng-container *ngIf="!loading; else pdfLoading">
-            <iframe [src]="pdfSafeUrl" style="width:100%; height:100%; border:0; border-radius:.6rem;" title="Belge önizleme"></iframe>
+        <div class="panel-pad cardish center-pane" style="position:relative; min-height:0;">
+          <ng-container *ngIf="!pdfError; else pdfErrorTpl">
+            <ng-container *ngIf="pdfBlobUrl; else loadingTpl">
+              <object class="pdf-frame" [data]="pdfBlobUrl" type="application/pdf" style="width:100%;height:100%;">
+                <iframe class="pdf-frame" [src]="pdfBlobUrl" style="width:100%;height:100%;border:0;"></iframe>
+              </object>
+            </ng-container>
           </ng-container>
-          <ng-template #pdfLoading>
-            <p-skeleton height="100%" borderRadius="12px"></p-skeleton>
+
+          <ng-template #loadingTpl>
+            <div class="meta" style="padding:.5rem;">PDF yükleniyor…</div>
           </ng-template>
+
+          <ng-template #pdfErrorTpl>
+            <div class="meta" style="padding:.5rem;">
+              PDF görüntülenemedi. <a [href]="previewUrl" target="_blank">Tarayıcıda aç</a>.
+            </div>
+          </ng-template>
+
+          <div class="viewer-toolbar">
+            <button class="btn" pTooltip="Yenile" (click)="reloadPdf()"><i class="pi pi-refresh"></i></button>
+            <button class="btn" pTooltip="Tarayıcıda aç" (click)="openInNewTab()"><i class="pi pi-external-link"></i></button>
+            <button class="btn" pTooltip="İndir" (click)="downloadPdf()"><i class="pi pi-download"></i></button>
+          </div>
         </div>
       </ng-template>
 
       <!-- Sağ: Tabs -->
       <ng-template pTemplate>
-        <div class="panel-pad cardish" [style.display]="rightHidden ? 'none' : 'block'">
-          <p-tabView>
-            <!-- Etiketler -->
+        <div class="panel-pad cardish right-pane" [style.display]="rightHidden ? 'none' : 'block'">
+          <p-tabView [(activeIndex)]="tabIndex" (activeIndexChange)="onTabChange($event)">
             <p-tabPanel header="Etiketler">
-              <div class="tabpad">
+              <div class="tab-scroll">
                 <div class="field">
                   <div class="label">Etiketler</div>
                   <p-autoComplete
@@ -175,7 +407,7 @@ import { firstValueFrom } from 'rxjs';
                     [dropdown]="true"
                     [virtualScroll]="true"
                     [forceSelection]="false"
-                    placeholder="etiket ekle"
+                    placeholder="etiket ekle (↵ ile ekle, , ile ayır)"
                     [style]="{width: '100%'}"
                     inputAriaLabel="Etiketleri düzenle">
                   </p-autoComplete>
@@ -185,7 +417,6 @@ import { firstValueFrom } from 'rxjs';
                   </div>
                 </div>
 
-                <!-- Tag Şablonları -->
                 <div class="field">
                   <div class="label">Tag Şablonları</div>
                   <div style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
@@ -203,9 +434,8 @@ import { firstValueFrom } from 'rxjs';
               </div>
             </p-tabPanel>
 
-            <!-- Özet -->
             <p-tabPanel header="Özet">
-              <div class="tabpad">
+              <div class="tab-scroll">
                 <div class="field">
                   <div class="label">Hedef uzunluk: {{targetWords}} kelime</div>
                   <p-slider [(ngModel)]="targetWords" [min]="60" [max]="240" [step]="5" (onChange)="onSummaryMetrics()"></p-slider>
@@ -227,9 +457,8 @@ import { firstValueFrom } from 'rxjs';
               </div>
             </p-tabPanel>
 
-            <!-- Özellikler -->
             <p-tabPanel header="Özellikler">
-              <div class="tabpad">
+              <div class="tab-scroll">
                 <div class="field">
                   <div class="label">Kategori</div>
                   <p-dropdown
@@ -252,7 +481,7 @@ import { firstValueFrom } from 'rxjs';
                 </div>
 
                 <div class="statusbar">
-                  <span class="meta small">Son kayıt: {{lastSavedAt || '—'}}</span>
+                  <span class="meta small">Son kayıt: {{lastSavedAt || '—'}} </span>
                   <span *ngIf="savingAll" class="small">• Kaydediliyor…</span>
                   <span class="grow"></span>
                   <span class="small meta" *ngIf="isDirty">Değişiklikler kaydedilmedi.</span>
@@ -264,89 +493,90 @@ import { firstValueFrom } from 'rxjs';
       </ng-template>
     </p-splitter>
 
-    <!-- Speed-Dial -->
-    <p-speedDial [model]="dialItems" direction="up" type="quarter-circle" [style]="{position:'fixed', right:'16px', bottom:'16px'}"></p-speedDial>
+    <p-speedDial [model]="dialItems" direction="up" type="quarter-circle"
+                 [style]="{position:'fixed', left:'16px', bottom:'16px', zIndex:35}"></p-speedDial>
 
-    <!-- Komut Paleti (Ctrl+K) -->
-    <p-dialog [(visible)]="paletteOpen" [modal]="true" [draggable]="false" [resizable]="false"
-              [style]="{width:'520px'}" header="Komut Paleti (Ctrl+K)">
-      <div class="p-input-icon-left" style="margin-bottom:.5rem;">
-        <i class="pi pi-search"></i>
-        <input pInputText type="text" [(ngModel)]="paletteQuery" placeholder="Komut ara..." (input)="filterCommands()" aria-label="Komut ara">
+    <div class="chat-fab-wrap">
+      <div class="fab-coach" *ngIf="fabIntro">Sohbeti deneyin 👋</div>
+      <button class="chat-fab" (click)="toggleChat()"
+              [ngClass]="{'fab-attn': fabIntro}"
+              pTooltip="{{chatOpen ? 'Kapat' : 'Sohbet'}}" tooltipPosition="left" aria-label="Sohbeti aç/kapat">
+        <i class="pi" [ngClass]="chatOpen ? 'pi-times' : 'pi-comments'"></i>
+        <span class="fab-ping" *ngIf="fabIntro"></span>
+      </button>
+    </div>
+
+    <div class="chat-float" *ngIf="chatOpen">
+      <div class="chat-head">
+        <i class="pi pi-sparkles"></i>
+        <div class="title">Belge Sohbeti</div>
+        <span class="grow"></span>
+        <button class="iconbtn" (click)="fxMuted = !fxMuted; saveFxPref()" pTooltip="{{fxMuted ? 'Sesi Aç' : 'Sesi Kapat'}}">
+          <i class="pi" [ngClass]="fxMuted ? 'pi-volume-off' : 'pi-volume-up'"></i>
+        </button>
+        <button class="iconbtn" (click)="resetChat()" pTooltip="Yeni Sohbet">
+          <i class="pi pi-refresh"></i>
+        </button>
+        <button class="iconbtn" (click)="toggleChat()" pTooltip="Kapat">
+          <i class="pi pi-times"></i>
+        </button>
       </div>
-      <p-listbox [options]="filteredCommands" [(ngModel)]="selectedCommand"
-                 [style]="{maxHeight:'320px'}" (onChange)="runCommand(selectedCommand)"
-                 optionLabel="label"></p-listbox>
-    </p-dialog>
 
-    <!-- Yardım / Kısayollar -->
-    <p-dialog [(visible)]="helpOpen" [modal]="true" [style]="{width:'560px'}" header="Kısayollar ve İpuçları">
-      <ul class="small">
-        <li><b>Ctrl+S</b>: Kaydet</li>
-        <li><b>Ctrl+K</b>: Komut paleti</li>
-        <li><b>?</b>: Bu yardım</li>
-        <li><b>Zen</b>: PDF'e odaklan (Sol/Sağ paneller gizlenir)</li>
-        <li><b>Sol/Sağ panel</b>: üst bardaki oklar ile gizle/göster</li>
-        <li>Özet hedefi: {{targetWords}} kelime. 80–120 arası önerilir.</li>
-      </ul>
-    </p-dialog>
-
-    <!-- Yerel Geçmiş -->
-    <p-dialog [(visible)]="historyOpen" [modal]="true" [style]="{width:'560px'}" header="Yerel Değişiklik Geçmişi">
-      <div *ngIf="!history.length" class="meta">Henüz bir kayıt yok.</div>
-      <ul *ngIf="history.length" class="small">
-        <li *ngFor="let h of history">{{h.when}} — {{h.msg}}</li>
-      </ul>
-      <div class="btns" style="justify-content:flex-end;">
-        <button pButton class="p-button-text" icon="pi pi-trash" label="Geçmişi temizle" (click)="clearHistory()"></button>
-      </div>
-    </p-dialog>
-
-    <!-- Benzer Dokümanlar -->
-    <p-sidebar [(visible)]="similarOpen" position="right" [baseZIndex]="10000" [style]="{width:'420px'}">
-      <h3>Benzer Dokümanlar</h3>
-      <div *ngIf="similarLoading">
-        <p-skeleton height="2rem" class="p-mb-2"></p-skeleton>
-        <p-skeleton height="2rem" class="p-mb-2"></p-skeleton>
-        <p-skeleton height="2rem" class="p-mb-2"></p-skeleton>
-      </div>
-      <div *ngIf="!similarLoading && !similar?.length" class="meta">Bulunamadı.</div>
-      <div *ngIf="!similarLoading && similar?.length" class="grid-auto-fit">
-        <div *ngFor="let s of similar" class="cardish" style="padding:.75rem;">
-          <div style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="s.filename">
-            {{s.filename}}
-          </div>
-          <div class="meta">{{s.uploadedAt}} • {{s.category || '—'}}</div>
-          <div class="meta">Benzerlik: {{(s._sim || 0) | number:'1.0-2'}}</div>
-          <div style="margin-top:.5rem; display:flex; gap:.5rem;">
-            <button pButton label="Aç" class="p-button-sm" (click)="openDoc(s.id)"></button>
-            <a pButton label="İndir" class="p-button-sm p-button-outlined" [href]="api.downloadUrl(s.id)"
-               [attr.download]="s.filename"></a>
-          </div>
+      <div class="chat-body" #floatChatLog>
+        <div *ngIf="!chatSessionId" class="meta" style="margin-bottom:.5rem;">
+          Bu belgeyle sohbet etmek için bir oturum başlatın.
+          <button pButton label="Yeni Sohbet" icon="pi pi-comments" class="p-button-sm" (click)="startChat()" [disabled]="chatBusy"></button>
         </div>
+
+        <ng-container *ngIf="chatSessionId">
+          <div *ngFor="let m of chatMessages" style="display:flex;">
+            <div class="bubble" [ngClass]="m.role==='user' ? 'bubble-user enter-right' : 'bubble-ai enter-left'">
+              <div>{{m.content}}</div>
+              <div class="meta small" *ngIf="m.createdAt">{{m.createdAt}}</div>
+            </div>
+          </div>
+          <div *ngIf="chatBusy" class="bubble bubble-ai typing enter-left">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+        </ng-container>
       </div>
-    </p-sidebar>
+
+      <div class="chat-input">
+        <textarea pInputTextarea [(ngModel)]="chatInput" rows="2" placeholder="Sorunu yaz…"
+                  [disabled]="!chatSessionId || chatBusy" style="flex:1"></textarea>
+        <button pButton label="Gönder" icon="pi pi-send"
+                (click)="sendChat()" [disabled]="!chatSessionId || chatBusy || !chatInput.trim()"></button>
+      </div>
+    </div>
+  </div>
   `
 })
-export class DetailPage implements OnInit {
-    // ---- Router & Doc ----
+export class DetailPage implements OnInit, OnDestroy {
     id!: string;
     doc?: DocInfo;
 
-    // ---- URLs & viewer ----
-    pdfUrl = '';
+    // —— PDF (Blob + native viewer)
+    pdfBlobUrl?: SafeResourceUrl;
+    private blobObjectUrl?: string;
+    pdfError = false;
+    pageCount = 0;
+
     previewUrl = '';
     downloadUrl = '';
-    pdfSafeUrl!: SafeResourceUrl;
 
-    // ---- Etiket & kategori ----
+    tabIndex = +(localStorage.getItem('detailTab') || '0');
+    onTabChange(i: number) {
+        this.tabIndex = i;
+        localStorage.setItem('detailTab', String(i));
+        setTimeout(() => this.pokePdfResize(), 0);
+    }
+
     tagsArr: string[] = [];
     tagSuggestions: string[] = [];
     trendTags: string[] = [];
     categoryOptions: { label: string; value: string }[] = [];
     cat = '';
 
-    // ---- Özet & kalite metrikleri ----
     summary = '';
     summaryWords = 0;
     summaryScore = 0;
@@ -354,18 +584,16 @@ export class DetailPage implements OnInit {
     summaryColor = '#9ca3af';
     targetWords = 100;
 
-    // ---- UI durumları ----
     lastSavedAt = '';
     loading = true;
     savingAll = false;
     reanalyzing = false;
     isDirty = false;
     zenMode = false;
+    savedPulse = false;
 
-    // ---- Online/Offline ----
     online = navigator.onLine;
 
-    // ---- Komut Paleti ----
     paletteOpen = false;
     paletteQuery = '';
     selectedCommand: any = null;
@@ -382,51 +610,76 @@ export class DetailPage implements OnInit {
     ];
     filteredCommands = [...this.commands];
 
-    // ---- Benzer dokümanlar paneli ----
     similarOpen = false;
     similarLoading = false;
     similar: Array<DocInfo & { _sim?: number }> = [];
 
-    // ---- Splitter durumları ----
     panelSizes: number[] = JSON.parse(localStorage.getItem('detailSplitter') || '[20,55,25]');
     leftHidden = false;
     rightHidden = false;
 
-    // ---- SpeedDial ----
     dialItems: MenuItem[] = [
         { icon: 'pi pi-refresh', tooltipOptions: { tooltipLabel: 'Yeniden Analiz' }, command: () => this.confirmReAnalyze() },
         { icon: 'pi pi-compass', tooltipOptions: { tooltipLabel: 'Benzerler' }, command: () => this.toggleSimilarPanel(true) },
-        { icon: 'pi pi-download', tooltipOptions: { tooltipLabel: 'PDF İndir' }, command: () => window.open(this.downloadUrl, '_blank') },
+        { icon: 'pi pi-download', tooltipOptions: { tooltipLabel: 'PDF İndir' }, command: () => this.downloadPdf() },
         { icon: 'pi pi-link', tooltipOptions: { tooltipLabel: 'Paylaş' }, command: () => this.copyShareLink() },
     ];
 
-    // ---- Tag Templates ----
     tplName = '';
     tagTemplates: { name: string; tags: string[] }[] = [];
 
-    // ---- Yerel Geçmiş ----
     historyOpen = false;
     history: { when: string; msg: string }[] = [];
     private lastSnapshot: { tagsJson: string; cat: string; summary: string } = { tagsJson: '[]', cat: '', summary: '' };
 
+    private autosave$ = new Subject<void>();
+    private savingFromAuto = false;
+    private lastSaveFxAt = 0;
+
+    dense = localStorage.getItem('density') === 'compact';
+
+    fabIntro = false;
+    chatOpen = false;
+    chatSessionId = '';
+    chatMessages: ChatMsg[] = [];
+    chatInput = '';
+    chatBusy = false;
+    fxMuted = localStorage.getItem('fxMuted') === '1';
+
+    @ViewChild('floatChatLog') floatChatLog?: ElementRef<HTMLDivElement>;
+
     constructor(
         private route: ActivatedRoute,
         public api: ApiService,
+        private router: Router,
         private san: DomSanitizer,
         private msg: MessageService,
-        private confirm: ConfirmationService
+        private confirm: ConfirmationService,
+        private http: HttpClient
     ) { }
+
+    private pokePdfResize() {
+        try { window.dispatchEvent(new Event('resize')); } catch { }
+    }
 
     ngOnInit(): void {
         this.id = this.route.snapshot.paramMap.get('id')
-            || this.route.snapshot.paramMap.get('hash') // geçiş desteği
+            || this.route.snapshot.paramMap.get('hash')
             || '';
-        this.pdfUrl = this.api.inlineUrl(this.id);
-        this.previewUrl = this.api.previewUrl(this.id);
-        this.downloadUrl = this.api.downloadUrl(this.id);
-        this.pdfSafeUrl = this.san.bypassSecurityTrustResourceUrl(this.pdfUrl);
 
-        // Belgeyi yükle
+        this.restoreChatIfAny();
+
+        // URL'leri hazırla
+        const baseInline = this.api.inlineUrl(this.id);
+        const sep = baseInline.includes('?') ? '&' : '?';
+        const inlineUrl = `${baseInline}${sep}v=${Date.now()}`;
+        this.previewUrl = `${this.api.previewUrl(this.id)}?v=${Date.now()}`;
+        this.downloadUrl = `${this.api.downloadUrl(this.id)}?v=${Date.now()}`;
+
+        // PDF'yi Blob olarak getir ve göster
+        this.loadPdfBlob(inlineUrl);
+
+        // Doc meta
         this.api.getDoc(this.id).subscribe({
             next: (d: DocInfo) => {
                 this.doc = d;
@@ -440,31 +693,82 @@ export class DetailPage implements OnInit {
             error: () => {
                 this.loading = false;
                 this.toast('error', 'Belge getirilemedi', 'Sunucudan yanıt alınamadı.');
+                this.playFx('error');
             }
         });
 
-        // Kategori seçenekleri
         this.api.suggestCategories('', 100).subscribe({
             next: (arr: string[]) => this.categoryOptions = (arr || []).map(v => ({ label: v, value: v })),
             error: () => { }
         });
-
-        // Trend etiketler
         this.api.suggestKeywords('', 12).subscribe({
             next: (arr: string[]) => this.trendTags = (arr || []).slice(0, 10),
             error: () => { }
         });
 
-        // Tag şablonları & geçmiş
         this.loadTagTemplates();
         this.loadHistory();
 
-        // Online/Offline
-        window.addEventListener('online', () => { this.online = true; this.toast('info', 'Bağlantı geri geldi'); });
+        window.addEventListener('online', () => { this.online = true; this.toast('info', 'Bağlantı geri geldi'); this.playFx('open'); });
         window.addEventListener('offline', () => { this.online = false; this.toast('warn', 'Çevrimdışı'); });
+
+        this.autosave$
+            .pipe(debounceTime(1200))
+            .subscribe(() => {
+                this.savingFromAuto = true;
+                this.saveAll().finally(() => this.savingFromAuto = false);
+            });
+
+        document.body.classList.toggle('compact', this.dense);
+
+        this.fabIntro = true;
+        setTimeout(() => this.fabIntro = false, 6000);
+
+        if (!localStorage.getItem('chatPeeked')) {
+            setTimeout(() => {
+                this.chatOpen = true;
+                this.playFx('open');
+                setTimeout(() => {
+                    if (this.chatOpen && this.chatMessages.length === 0) this.chatOpen = false;
+                    localStorage.setItem('chatPeeked', '1');
+                }, 2500);
+            }, 900);
+        }
     }
 
-    // ----- Etiket / kategori yardımcıları -----
+    ngOnDestroy(): void {
+        if (this.blobObjectUrl) URL.revokeObjectURL(this.blobObjectUrl);
+    }
+
+    private loadPdfBlob(url: string) {
+        this.pdfError = false;
+        if (this.blobObjectUrl) { URL.revokeObjectURL(this.blobObjectUrl); this.blobObjectUrl = undefined; }
+        this.pdfBlobUrl = undefined;
+
+        this.http.get(url, { responseType: 'blob' }).subscribe({
+            next: (blob) => {
+                const mime = blob.type || 'application/pdf';
+                const pdfBlob = mime.includes('pdf') ? blob : new Blob([blob], { type: 'application/pdf' });
+                this.blobObjectUrl = URL.createObjectURL(pdfBlob);
+                this.pdfBlobUrl = this.san.bypassSecurityTrustResourceUrl(this.blobObjectUrl);
+            },
+            error: (err) => {
+                console.error('PDF blob error', err);
+                this.pdfError = true;
+            }
+        });
+    }
+
+    reloadPdf() {
+        const base = this.api.inlineUrl(this.id);
+        const sep = base.includes('?') ? '&' : '?';
+        const url = `${base}${sep}v=${Date.now()}`;
+        this.loadPdfBlob(url);
+    }
+    openInNewTab() { window.open(this.previewUrl, '_blank'); }
+    downloadPdf() { window.open(this.downloadUrl, '_blank'); }
+
+    // —— Tag & summary & misc (seninkiyle aynı) ——
     joinTags(a: string[]): string { return (a || []).map(x => x.trim()).filter(Boolean).join(', '); }
     addTag(t: string) {
         if (!t) return;
@@ -484,8 +788,7 @@ export class DetailPage implements OnInit {
         });
     }
 
-    // ----- Dirty & Kaydet -----
-    onDirty() { this.isDirty = true; }
+    onDirty() { this.isDirty = true; this.autosave$.next(); }
 
     async saveAll() {
         if (!this.id) return;
@@ -496,7 +799,7 @@ export class DetailPage implements OnInit {
         if (prev.cat !== nextSnap.cat) patch.category = this.cat || null;
         if (prev.summary !== nextSnap.summary) patch.summary = this.summary || null;
 
-        if (!Object.keys(patch).length) { this.toast('info', 'Değişiklik yok'); this.isDirty = false; return; }
+        if (!Object.keys(patch).length) { this.isDirty = false; return; }
 
         this.savingAll = true;
         try {
@@ -507,14 +810,23 @@ export class DetailPage implements OnInit {
             const msg = Object.keys(patch).map(k => k === 'tags' ? 'Etiketler' : k === 'category' ? 'Kategori' : 'Özet').join(', ') + ' güncellendi.';
             this.toast('success', 'Kaydedildi', msg);
             this.pushHistory(msg);
+            this.savedPulse = true; setTimeout(() => this.savedPulse = false, 800);
+
+            if (this.savingFromAuto) {
+                const now = Date.now();
+                if (now - this.lastSaveFxAt > 2500) {
+                    this.playFx('save');
+                    this.lastSaveFxAt = now;
+                }
+            }
         } catch {
             this.toast('error', 'Kayıt sırasında hata', 'Bazı alanlar kaydedilemedi.');
+            this.playFx('error');
         } finally {
             this.savingAll = false;
         }
     }
 
-    // ----- Yeniden analiz -----
     confirmReAnalyze() {
         this.confirm.confirm({
             header: 'Yeniden Analiz',
@@ -527,12 +839,11 @@ export class DetailPage implements OnInit {
         if (!this.id) return;
         this.reanalyzing = true;
         this.api.reanalyze(this.id).subscribe({
-            next: () => { this.reanalyzing = false; this.toast('success', 'Yeniden analiz başlatıldı', 'Sonuçlar hazır olunca sayfayı yenileyin.'); },
-            error: () => { this.reanalyzing = false; this.toast('error', 'Yeniden analiz başarısız', 'Daha sonra tekrar deneyin.'); }
+            next: () => { this.reanalyzing = false; this.toast('success', 'Yeniden analiz başlatıldı', 'Sonuçlar hazır olunca sayfayı yenileyin.'); this.playFx('open'); },
+            error: () => { this.reanalyzing = false; this.toast('error', 'Yeniden analiz başarısız', 'Daha sonra tekrar deneyin.'); this.playFx('error'); }
         });
     }
 
-    // ----- Özet kalite ölçer + akıllı düzenleme -----
     onSummaryMetrics() {
         const words = (this.summary || '').trim().split(/\s+/).filter(Boolean).length;
         this.summaryWords = words;
@@ -541,7 +852,7 @@ export class DetailPage implements OnInit {
         const max = this.targetWords + 20;
         let score = 0, hint = '';
         if (words === 0) { score = 0; hint = 'Özet boş'; this.summaryColor = '#ef4444'; }
-        else if (words < min) { score = Math.round((words / min) * 70); hint = 'Kısa'; this.summaryColor = '#f59e0b'; }
+        else if (words < min) { score = Math.round((words / Math.max(1, min)) * 70); hint = 'Kısa'; this.summaryColor = '#f59e0b'; }
         else if (words > max) { score = Math.round((max / words) * 70); hint = 'Uzun'; this.summaryColor = '#f59e0b'; }
         else { score = 100; hint = 'İdeal'; this.summaryColor = '#10b981'; }
         this.summaryScore = Math.max(0, Math.min(100, score));
@@ -569,23 +880,20 @@ export class DetailPage implements OnInit {
         this.onSummaryMetrics(); this.onDirty();
     }
 
-    // ----- Komut Paleti (Ctrl+K) -----
     @HostListener('document:keydown.control.k', ['$event'])
     openPalette(ev?: KeyboardEvent) { ev?.preventDefault?.(); this.paletteOpen = true; this.paletteQuery = ''; this.filteredCommands = [...this.commands]; }
-
     filterCommands() {
         const q = (this.paletteQuery || '').toLowerCase();
         this.filteredCommands = this.commands.filter(c => c.label.toLowerCase().includes(q));
     }
-
     runCommand(cmd: any) {
         if (!cmd) return;
         const id = cmd.id;
         this.paletteOpen = false;
         if (id === 'save') this.saveAll();
         if (id === 'reanalyze') this.confirmReAnalyze();
-        if (id === 'download') window.open(this.downloadUrl, '_blank');
-        if (id === 'openPreview') window.open(this.previewUrl, '_blank');
+        if (id === 'download') this.downloadPdf();
+        if (id === 'openPreview') this.openInNewTab();
         if (id === 'similar') this.toggleSimilarPanel(true);
         if (id === 'shorten') { this.smartShorten(); }
         if (id === 'expand') { this.smartExpand(); }
@@ -593,7 +901,6 @@ export class DetailPage implements OnInit {
         if (id === 'share') { this.copyShareLink(); }
     }
 
-    // ----- Benzer dokümanlar paneli -----
     toggleSimilarPanel(open: boolean) { this.similarOpen = open; if (open) this.loadSimilar(); }
     loadSimilar() {
         if (!this.doc) return;
@@ -616,33 +923,41 @@ export class DetailPage implements OnInit {
     }
     openDoc(id: string) { window.open(`/documents/${id}`, '_blank'); }
 
-    // ----- Splitter & Zen -----
     saveSplitter(ev: any) {
         if (ev?.sizes?.length === 3) {
             this.panelSizes = ev.sizes;
             localStorage.setItem('detailSplitter', JSON.stringify(this.panelSizes));
+            setTimeout(() => this.pokePdfResize(), 0);
         }
     }
     toggleLeft() {
         this.leftHidden = !this.leftHidden;
         this.panelSizes = this.leftHidden ? [0, 75, 25] : JSON.parse(localStorage.getItem('detailSplitter') || '[20,55,25]');
+        setTimeout(() => this.pokePdfResize(), 0);
     }
     toggleRight() {
         this.rightHidden = !this.rightHidden;
         this.panelSizes = this.rightHidden ? [25, 75, 0] : JSON.parse(localStorage.getItem('detailSplitter') || '[20,55,25]');
+        setTimeout(() => this.pokePdfResize(), 0);
     }
     resetPanels() {
         this.leftHidden = this.rightHidden = false;
         this.panelSizes = [20, 55, 25];
         localStorage.setItem('detailSplitter', JSON.stringify(this.panelSizes));
+        setTimeout(() => this.pokePdfResize(), 0);
     }
     toggleZen() {
         this.zenMode = !this.zenMode;
         if (this.zenMode) { this.leftHidden = true; this.rightHidden = true; this.panelSizes = [0, 100, 0]; }
         else { this.resetPanels(); }
+        setTimeout(() => this.pokePdfResize(), 0);
+    }
+    toggleDensity() {
+        this.dense = !this.dense;
+        document.body.classList.toggle('compact', this.dense);
+        localStorage.setItem('density', this.dense ? 'compact' : 'comfortable');
     }
 
-    // ----- Tag Template yönetimi -----
     loadTagTemplates() {
         try { this.tagTemplates = JSON.parse(localStorage.getItem('tagTemplates') || '[]'); } catch { this.tagTemplates = []; }
     }
@@ -668,12 +983,11 @@ export class DetailPage implements OnInit {
         this.toast('warn', 'Şablon silindi', name);
     }
 
-    // ----- Yerel geçmiş -----
     snapshot() { this.lastSnapshot = { tagsJson: JSON.stringify(this.tagsArr), cat: this.cat ?? '', summary: this.summary ?? '' }; }
     loadHistory() {
         try { this.history = JSON.parse(localStorage.getItem(`detailHistory:${this.id}`) || '[]'); } catch { this.history = []; }
     }
-    pushHistory(msg: string) {
+    private pushHistory(msg: string) {
         if (!msg) return;
         const entry = { when: new Date().toLocaleString(), msg };
         this.history.unshift(entry);
@@ -682,8 +996,18 @@ export class DetailPage implements OnInit {
     }
     clearHistory() { this.history = []; localStorage.removeItem(`detailHistory:${this.id}`); }
 
-    // ----- Paylaş / Export / Kopyala -----
-    copyShareLink() { const url = window.location.href; navigator.clipboard?.writeText(url); this.toast('success', 'Bağlantı kopyalandı', url); }
+    copyShareLink() {
+        const url = window.location.href;
+        if (navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText(url);
+            this.toast('success', 'Bağlantı kopyalandı', url);
+        } else {
+            const a = document.createElement('textarea');
+            a.value = url; document.body.appendChild(a);
+            a.select(); document.execCommand('copy'); document.body.removeChild(a);
+            this.toast('success', 'Bağlantı kopyalandı', url);
+        }
+    }
     exportJson() {
         const data = {
             id: this.id,
@@ -697,27 +1021,144 @@ export class DetailPage implements OnInit {
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
         a.download = `${this.doc?.filename || 'document'}.json`; a.click(); URL.revokeObjectURL(a.href);
     }
-    copyTags() { const str = this.joinTags(this.tagsArr); navigator.clipboard?.writeText(str); this.toast('success', 'Etiketler kopyalandı', str); }
+    copyTags() {
+        const str = this.joinTags(this.tagsArr);
+        if (!str) { this.toast('info', 'Kopyalanacak etiket yok'); return; }
+        navigator.clipboard?.writeText(str);
+        this.toast('success', 'Etiketler kopyalandı', str);
+    }
     copy(text: string) { navigator.clipboard?.writeText(text); this.toast('info', 'Kopyalandı', text); }
 
-    // ----- Kısayollar -----
     @HostListener('document:keydown.control.s', ['$event'])
     onSaveShortcut(ev: KeyboardEvent) { ev.preventDefault(); if (!this.savingAll) this.saveAll(); }
-
     @HostListener('document:keydown.shift./', ['$event'])
     onHelp(ev: KeyboardEvent) { ev.preventDefault(); this.helpOpen = true; }
-
-    // Sayfadan ayrılma uyarısı (kirli ise)
     @HostListener('window:beforeunload', ['$event'])
     onBeforeUnload(event: BeforeUnloadEvent) {
         if (this.isDirty) { event.preventDefault(); event.returnValue = ''; }
     }
 
-    // ----- Toast helper -----
     private toast(sev: 'success' | 'info' | 'warn' | 'error', sum?: string, det?: string) {
         this.msg.add({ severity: sev, summary: sum, detail: det, life: 2600 });
     }
 
-    // ---- Yardım / UI bayrakları ----
+    private audioCache: Record<string, HTMLAudioElement | null> = {};
+    private getFx(name: 'send' | 'receive' | 'open' | 'error' | 'save'): HTMLAudioElement {
+        if (this.audioCache[name]) return this.audioCache[name]!;
+        const data = this.fxData[name];
+        const a = new Audio(`data:audio/wav;base64,${data}`);
+        const vol: Record<string, number> = {
+            send: 0.95, receive: 0.95, open: 0.9, error: 1.0, save: 1.0
+        };
+        a.volume = vol[name] ?? 0.9;
+        this.audioCache[name] = a;
+        return a;
+    }
+    playFx(name: 'send' | 'receive' | 'open' | 'error' | 'save') {
+        if (this.fxMuted) return;
+        try { const a = this.getFx(name); a.currentTime = 0; a.play(); } catch { /* sessiz */ }
+    }
+    saveFxPref() { localStorage.setItem('fxMuted', this.fxMuted ? '1' : '0'); }
+
+    private fxData = {
+        send: "UklGRkQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQwAAAAAAAB/f39/f39/f3///wAAgICAf39/fwAAgICAf39/fwAA",
+        receive: "UklGRlYAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YRIAAAAAAACAgP8AAP//AACAgP8AAAD/AP8A/wD/AP8A",
+        open: "UklGRlIAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YRAAAAAAAP8A/wAAAP8A/wD/AP8A/wAA",
+        error: "UklGRlQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YRIAAAAAAP8AAAAA/wAAAAD/AAAAAP8A",
+        save: "UklGRl8AAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YRIAAAAAAICAAAD/AP8A//8AAP8A//8AAP8A"
+    } as const;
+
     helpOpen = false;
+
+    // —— Chat bölümü (seninkiyle aynı) ——
+    private scrollChatToBottom() {
+        setTimeout(() => {
+            const el = this.floatChatLog?.nativeElement;
+            if (el) el.scrollTop = el.scrollHeight;
+        });
+    }
+    private persistChat() {
+        localStorage.setItem(`chatSession:${this.id}`, this.chatSessionId || '');
+        localStorage.setItem(`chatMessages:${this.id}`, JSON.stringify(this.chatMessages || []));
+    }
+    private restoreChatIfAny() {
+        const sid = localStorage.getItem(`chatSession:${this.id}`);
+        const msgsJson = localStorage.getItem(`chatMessages:${this.id}`);
+        if (sid) this.chatSessionId = sid;
+        if (msgsJson) {
+            try { this.chatMessages = JSON.parse(msgsJson) || []; } catch { this.chatMessages = []; }
+        }
+        if (this.chatSessionId && !msgsJson) {
+            this.chatBusy = true;
+            this.api.chatMessages(this.chatSessionId).subscribe({
+                next: (msgs: any[]) => {
+                    this.chatMessages = (msgs || []).map(m => ({
+                        role: (m.role === 'system' ? 'assistant' : m.role) as 'user' | 'assistant',
+                        content: m.content,
+                        createdAt: m.createdAt
+                    }));
+                    this.chatBusy = false;
+                    this.persistChat();
+                    this.scrollChatToBottom();
+                },
+                error: _ => { this.chatBusy = false; }
+            });
+        }
+    }
+    toggleChat() {
+        this.chatOpen = !this.chatOpen;
+        if (this.chatOpen) {
+            this.playFx('open');
+            if (!this.chatSessionId) this.startChat();
+            this.scrollChatToBottom();
+        }
+    }
+    startChat() {
+        if (!this.id) return;
+        this.chatBusy = true;
+        this.api.startChat(this.id).subscribe({
+            next: (res) => {
+                this.chatSessionId = res.session_id;
+                this.chatMessages = [];
+                this.chatBusy = false;
+                this.persistChat();
+                this.scrollChatToBottom();
+            },
+            error: _ => { this.chatBusy = false; this.toast('error', 'Sohbet başlatılamadı'); this.playFx('error'); }
+        });
+    }
+    sendChat() {
+        const text = (this.chatInput || '').trim();
+        if (!text || !this.chatSessionId) return;
+
+        const userMsg: ChatMsg = { role: 'user', content: text };
+        this.chatMessages = [...this.chatMessages, userMsg];
+        this.chatInput = '';
+        this.chatBusy = true;
+        this.persistChat();
+        this.scrollChatToBottom();
+        this.playFx('send');
+
+        this.api.chatAsk(this.chatSessionId, text).subscribe({
+            next: (res) => {
+                const ai: ChatMsg = { role: 'assistant', content: res.answer };
+                this.chatMessages = [...this.chatMessages, ai];
+                this.chatBusy = false;
+                this.persistChat();
+                this.scrollChatToBottom();
+                this.playFx('receive');
+            },
+            error: _ => { this.chatBusy = false; this.toast('error', 'Yanıt alınamadı'); this.playFx('error'); }
+        });
+    }
+    resetChat() {
+        if (this.chatSessionId) {
+            localStorage.removeItem(`chatSession:${this.id}`);
+            localStorage.removeItem(`chatMessages:${this.id}`);
+        }
+        this.chatSessionId = '';
+        this.chatMessages = [];
+        this.chatInput = '';
+        this.playFx('open');
+    }
 }
