@@ -18,6 +18,7 @@ services:
       - ./.env
     environment:
       DATABASE_URL: postgresql://appuser:secret@db:5432/appdb
+      ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080,http://localhost:4200,http://127.0.0.1:4200,http://web"
     depends_on:
       - db
     volumes:
