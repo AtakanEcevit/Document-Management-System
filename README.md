@@ -1,159 +1,137 @@
-# Özellikler
+# Document Management System with AI Chatbot
 
-PDF Yükleme: Tek dosya yükle, hızlı kayıt.
+[![Angular](https://img.shields.io/badge/Frontend-Angular-red?logo=angular)](https://angular.dev/)  
+[![PrimeNG](https://img.shields.io/badge/UI-PrimeNG-blue?logo=primefaces)](https://primeng.org/)  
+[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-teal?logo=fastapi)](https://fastapi.tiangolo.com/)  
+[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-blue?logo=postgresql)](https://www.postgresql.org/)  
+[![Docker](https://img.shields.io/badge/Container-Docker-2496ED?logo=docker)](https://www.docker.com/)  
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)  
+[![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen.svg)](https://github.com/AtakanEcevit/Document-Management-System/pulls)  
 
-Otomatik Analiz: PDF’ten metin çıkarma → anahtar kelimeler, kısa özet, kategori (LLM destekli).
+---
 
-Kütüphane Görünümü: Grid / liste; arama, kategori, tarih, etiket filtreleri; sıralama.
+## 📑 Table of Contents
+- [Overview](#overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Docker Setup](#docker-setup)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
 
-Detay Sayfası: Etiket/özet/kategori düzenleme + tek Kaydet butonu; benzer dokümanlar paneli; “Yeniden analiz”.
+---
 
-Inline Önizleme: PDF’i tarayıcı içinde aç veya indir.
+## Overview  
 
-Öneriler: Otomatik kategori ve etiket (tag) önerileri.
+This project is a **document management system** with built-in **AI capabilities**.  
 
-Sağlam Backend: FastAPI, PostgreSQL (psycopg pool), CORS, problem+json hata formatı.
+With this app, you can:  
+- Upload and organize PDF documents  
+- Automatically generate **keywords, summaries, and categories**  
+- Preview documents directly in the browser  
+- **Chat with your documents** in natural language  
 
+---
 
- # Mimari
+## Features  
 
-Frontend (Angular, PrimeNG)
+### Document Management  
+- Upload PDFs via drag-and-drop or file picker  
+- <ins>Automatic</ins> text extraction, keyword generation, and category tagging  
+- <ins>AI-powered</ins> summaries for quick overviews  
+- Library view with search, filtering, and sorting  
+- Inline PDF preview  
 
- ├─ Pages: Library (listeleme/filtre), Detail (düzenleme/önizleme)
- 
- └─ Services: ApiService (REST istemcisi)
+### Chatbot Integration  
+- Start a conversation with any uploaded document  
+- Ask context-based questions in plain English  
+- Example queries:  
+  - “What’s the deadline in this contract?”  
+  - “Summarize section three.”  
+- Get instant, context-aware answers
 
-Backend (FastAPI)
+> [!TIP]  
+> The chatbot remembers the context of the document you opened <ins>**at that moment**</ins>, so you don’t have to re-explain what file you’re talking about.  
 
- ├─ Routes: /api/v1
- 
- │   ├─ GET  /health
- 
- │   ├─ GET  /files                    (legacy list)
- 
- │   ├─ POST /files                    (upload)
- 
- │   ├─ GET  /files/{id}/download      (inline/attachment)
- 
- │   ├─ GET  /documents                (paged list + filtre/sıralama)
- 
- │   ├─ GET  /documents/{id}           (detay)
- 
- │   ├─ PATCH /documents/{id}          (tags/summary/category)
- 
- │   ├─ POST /documents/{id}/reanalyze (yeniden analiz)
- 
- │   ├─ GET  /documents/suggest/categories
- 
- │   └─ GET  /documents/suggest/tags
- 
- └─ Services: pdf_utils, groq_utils, db_pg
+### User Experience  
+- Grid and list view options with saved preferences  
+- Keyboard shortcuts (`/` for search, `Ctrl+S` for save)  
+- Responsive UI built with Angular + PrimeNG  
+- Easy deployment with Docker  
 
-DB: PostgreSQL (psycopg_pool)
+---
 
-Storage: Dosyalar (uploads/) + dosya yolu DB’de
+## Tech Stack  
 
-# Ekranlar
+| Layer      | Technology |
+|------------|------------|
+| Frontend   | Angular (standalone), PrimeNG |
+| Backend    | FastAPI (Python) |
+| Database   | PostgreSQL with psycopg pool |
+| AI Layer   | LLM integration (summaries, keywords, chatbot) |
+| Extras     | Docker, PDF.js for inline previews |
 
-Library: Arama/filtre, grid/liste, seç-çoklu analiz, CSV export, sağdan inline önizleme paneli.
+---
 
-Detail: PDF viewer ortada, sol meta, sağda tab’ler (Etiketler / Özet / Özellikler).
+## Getting Started  
 
-Üst barda tek “Kaydet” ve kısayollar (Ctrl+S, Ctrl+K, Zen vs).
+### Prerequisites  
+- Node.js  
+- Python 3.10+  
+- PostgreSQL  
+- Docker (optional)
 
-# Kısayollar
+> [!IMPORTANT]  
+> Make sure your PostgreSQL server is running before starting the backend. Otherwise, the API will fail to connect.  
 
-Ctrl+S Kaydet • Ctrl+K Komut paleti • / Arama alanına odak • ? Yardım
+### Installation  
 
-Hızlı Başlangıç
+Clone the repository:  
+```bash
+git clone https://github.com/AtakanEcevit/Document-Management-System.git
+cd Document-Management-System
+```
 
-Docker ile Repo kökünde bir docker-compose.yml ile;
-
-# İlk kurulum / yeniden kurulum
-docker compose up --build
-
-# Sonraki açılışlar
-docker compose up -d
-Web: http://localhost:4200
-API: http://localhost:8080/api/v1
-
-İlk çalıştırmada DB tablo oluşturulur, uploads klasörü yoksa yaratılır.
-
-Yerelde (backend)
-Gereksinim: Python 3.11+, PostgreSQL çalışır durumda.
-
-cd backend/           # dizin adına göre uyarlanmalı
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+#### Backend setup
+```bash
+cd backend
 pip install -r requirements.txt
+uvicorn main:app --reload
+```
 
-# .env oluştur (aşağıdaki Yapılandırma bölümüne bak)
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-
-Yerelde (frontend)
-Gereksinim: Node 18+, npm.
-
-cd frontend-angular/  # dizin adına göre uyarlanmalı
+#### Frontend setup
+```bash
+cd frontend
 npm install
-npm start             # veya: ng serve
-# http://localhost:4200
+ng serve
+```
 
-Frontend, API taban adresini runtime’da window.__APP_API_BASE__ üzerinden okuyabilir.
-Geliştirmede çoğunlukla http://localhost:8080/api/v1 kullanılır.
+#### Docker Setup
+```bash
+docker-compose up --build
+```
+>[!CAUTION]
+>If you already have services running on port 5432 (PostgreSQL) or 4200/8080 (frontend/backend), you may need to stop them before running Docker Compose.
 
-Yapılandırma
-.env (backend):
-APP_ENV=dev
-DATABASE_URL=postgresql://appuser:secret@localhost:5432/appdb
-STORAGE_ROOT=/app/uploads
-ALLOWED_ORIGINS=http://localhost:4200
+---
 
-# LLM analiz için
-# GROQ_API_KEY=...
+## Roadmap
 
-# Önemli notlar
-ALLOWED_ORIGINS: CORS için frontend adresini ekle. STORAGE_ROOT: yüklenen PDF’lerin saklanacağı klasör (container içinde kalıcı volume önerilir).
-LLM analiz (özet/etiket/kategori) için groq_utils benzeri sağlayıcı anahtarını ayarla.
-API Referansı (özet)
-/api/v1 altında:
-GET /health → { ok: true, env: "dev" }
-GET /files?q&limit → (legacy) basit liste
-POST /files (form-data, field: file) → yükle + analiz + kaydet → belge döner
-GET /files/{id}/download?disposition=inline|attachment → PDF stream
-GET /documents → sayfalı liste (query: q, category, tags, dateFrom, dateTo, hasTags, sort, offset, limit)
-GET /documents/{id} → detay
-PATCH /documents/{id} → gövde: { tags?: string[], summary?: string, category?: string }
-POST /documents/{id}/reanalyze → yeniden analiz (metin çıkar + özet/etiket/kategori günceller)
-GET /documents/suggest/categories?prefix&limit
-GET /documents/suggest/tags?prefix&limit
+- Multi-file chatbot support (ask questions across several PDFs)
+- Export chats and notes
+- User authentication and accounts
+- Advanced NLP features (summarization modes, clustering)
+  ---
 
+## Contributing
 
+Contributions, issues, and feature requests are welcome.
+Please open an issue to discuss changes before submitting a pull request.
 
-Geliştirici Notları
-Frontend
-Angular standalone bileşenler (LibraryPage, DetailPage).
-PrimeNG kullanımı (Table, Dropdown, Sidebar, Toast, Splitter, TabView vs.).
-ApiService backend sözleşmesine (v1) göre güncellenmiş: patchDocument, suggest*, reanalyze.
-Kaydet düğmesi tek ve üst barda; autosave kaldırıldı.
+---
+## License
 
-Backend
-FastAPI + psycopg_pool bağlantı havuzu.
-documents tablosu: file_hash, filename, uploaded_at, keywords, summary, category, file_path, fulltext.
-PDF metin çıkarma (pdf_utils), anahtar kelime/özet/kategori (LLM; groq_utils).
-“Problem+JSON” hata yanıtları ve düzgün CORS.
+This project is licensed under the [MIT License](LICENSE).
 
-Sorun Giderme
-Yüklemede 405 Not Allowed
-Frontend upload URL’si POST /api/v1/files olmalı.
-PrimeNG FileUpload kullanıyorsan customUpload ile ApiService.upload()’a yönlendir.
-CORS ALLOWED_ORIGINS içinde frontend adresi var mı?
-
-Özet/Kategori güncellenmiyor
-Frontend saveAll() → ApiService.patchDocument() gidiyor olmalı.
-Backend PATCH /documents/{id} alanlarını güncelliyor; DB kullanıcı yetkisi ve commit akışını kontrol et.
-PDF inline açılmıyor
-GET /files/{id}/download?disposition=inline çağrısını ve Content-Disposition header’ını doğrula.
-Tarayıcı PDF eklentisi/engelleyici varsa test et.
-Font/stylesheet hataları
-Font paketleri/paths doğru mu? (opsiyonel)
-Cache temizleyip tekrar dene.
+---
