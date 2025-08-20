@@ -11,9 +11,3 @@ sqlalchemy>=2.0
 psycopg[binary]>=3.2
 alembic>=1.13
 psycopg-pool>=3.2
-
-# OCR dependencies
-python-doctr==1.0.0
-torch==2.8.0
-opencv-python==4.12.0.88
-matplotlib==3.10.5
