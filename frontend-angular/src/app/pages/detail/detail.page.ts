@@ -48,19 +48,19 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string
     ],
     providers: [MessageService, ConfirmationService],
     styles: [`
-    /* ---------- Design tokens ---------- */
-    :host{
-      --brand-h: 256; --brand-s: 86%; --brand-l: 64%;
-      --brand: hsl(var(--brand-h) var(--brand-s) var(--brand-l));
-      --accent: hsl(198 86% 62%);
-      --surface-0:#0b0f14; --surface-1:#10161f; --surface-2:#121a25;
-      --border: rgba(255,255,255,.08);
-      --muted: #a3b0c2;
-      --radius: 12px;
-      --elev-1: 0 1px 2px rgba(0,0,0,.18), 0 10px 26px rgba(0,0,0,.22);
-      --elev-2: 0 2px 8px rgba(0,0,0,.24), 0 20px 36px rgba(0,0,0,.24);
-      color-scheme: dark; /* uygulama dark ise; light ise 'light' yap */
-    }
+      /* ---------- Design tokens ---------- */
+      :host{
+        --brand-h: 256; --brand-s: 86%; --brand-l: 64%;
+        --brand: hsl(var(--brand-h) var(--brand-s) var(--brand-l));
+        --accent: hsl(198 86% 62%);
+        --surface-0:#0b0f14; --surface-1:#10161f; --surface-2:#121a25;
+        --border: rgba(255,255,255,.08);
+        --muted: #a3b0c2;
+        --radius: 12px;
+        --elev-1: 0 1px 2px rgba(0,0,0,.18), 0 10px 26px rgba(0,0,0,.22);
+        --elev-2: 0 2px 8px rgba(0,0,0,.24), 0 20px 36px rgba(0,0,0,.24);
+        color-scheme: dark;
+      }
 
     .detail-bg{
       background:
@@ -184,25 +184,49 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string
       border-radius:2px;
     }
 
-    .center-pane{
-      display:flex;
-      align-items:stretch;
-      justify-content:stretch;
-      min-height:0;
-      background:
-        radial-gradient(40% 50% at 60% 0%, rgba(255,255,255,.04), transparent 60%),
-        linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+      .center-pane{
+        display:flex;
+        align-items:stretch;
+        justify-content:stretch;
+        min-height:0;
+        background:
+          radial-gradient(40% 50% at 60% 0%, rgba(255,255,255,.04), transparent 60%),
+          linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+      }
+
+.panel-pad.cardish.center-pane {
+          padding: 0 !important;
+          background: var(--surface-0) !important;
+          box-shadow: none;
+        }
+
+      .pdf-container {
+          flex: 1 1 auto;
+          display: flex;
+          align-items: stretch;
+          justify-content: stretch;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background: transparent !important; /* siyah kutu yok */
+        }
+
+    .pdf-frame {
+      flex: 1 1 auto;
+      width: 100% !important;
+      height: 100% !important;
+      border: none !important;
+      border-radius: 0; /* köşe yuvarlatma da kaldırabilirsin */
+      background: transparent !important; /* siyah zemin yok */
     }
 
-    .pdf-frame{ width:100%; height:100%; border:0; border-radius:.6rem; }
-
-    .viewer-toolbar{
-      position:absolute; right: 1rem; bottom: 1rem; z-index: 5;
-      display:flex; align-items:center; gap:.4rem;
-      padding:.35rem; border-radius: 999px;
-      background: rgba(10,14,20,.55); backdrop-filter: blur(8px);
-      border:1px solid var(--border); box-shadow: var(--elev-2);
-    }
+      .viewer-toolbar{
+        position:absolute; right: .75rem; top: .75rem; z-index: 5;
+        display:flex; align-items:center; gap:.4rem;
+        padding:.35rem; border-radius: 999px;
+        background: rgba(10,14,20,.55); backdrop-filter: blur(8px);
+        border:1px solid var(--border); box-shadow: var(--elev-2);
+      }
     .viewer-toolbar .btn{
       display:inline-flex; align-items:center; justify-content:center;
       width:34px; height:34px; border-radius: 999px;
@@ -288,6 +312,18 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string
     @media (prefers-reduced-motion: reduce){
       *{ animation: none !important; transition: none !important; }
     }
+
+    /* ---- PDF loading & error states ---- */
+    .pdf-loading,
+    .pdf-error{
+      position:absolute; inset:0;
+      display:flex; flex-direction:column; gap:.5rem;
+      align-items:center; justify-content:center;
+      color:#dbe4f3; background: transparent;
+      text-align:center;
+    }
+    .pdf-loading i{ font-size:1.25rem; opacity:.9; }
+    .pdf-error .tips{ opacity:.85; display:flex; gap:.5rem; }
   `],
     template: `
   <div class="detail-bg">
@@ -364,32 +400,49 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string
         </div>
       </ng-template>
 
-      <!-- Orta: PDF (Blob + native viewer) -->
+      <!-- Orta: PDF (Blob + native viewer; iyileştirilmiş) -->
       <ng-template pTemplate>
         <div class="panel-pad cardish center-pane" style="position:relative; min-height:0;">
-          <ng-container *ngIf="!pdfError; else pdfErrorTpl">
-            <ng-container *ngIf="pdfBlobUrl; else loadingTpl">
-              <object class="pdf-frame" [data]="pdfBlobUrl" type="application/pdf" style="width:100%;height:100%;">
-                <iframe class="pdf-frame" [src]="pdfBlobUrl" style="width:100%;height:100%;border:0;"></iframe>
-              </object>
-            </ng-container>
-          </ng-container>
-
-          <ng-template #loadingTpl>
-            <div class="meta" style="padding:.5rem;">PDF yükleniyor…</div>
-          </ng-template>
-
-          <ng-template #pdfErrorTpl>
-            <div class="meta" style="padding:.5rem;">
-              PDF görüntülenemedi. <a [href]="previewUrl" target="_blank">Tarayıcıda aç</a>.
-            </div>
-          </ng-template>
-
-          <div class="viewer-toolbar">
-            <button class="btn" pTooltip="Yenile" (click)="reloadPdf()"><i class="pi pi-refresh"></i></button>
-            <button class="btn" pTooltip="Tarayıcıda aç" (click)="openInNewTab()"><i class="pi pi-external-link"></i></button>
-            <button class="btn" pTooltip="İndir" (click)="downloadPdf()"><i class="pi pi-download"></i></button>
+          <!-- Yükleme -->
+          <div *ngIf="pdfLoading" class="pdf-loading">
+            <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+            <span>PDF yükleniyor…</span>
           </div>
+
+          <!-- Başarılı -->
+         <ng-container *ngIf="!pdfLoading && !pdfError">
+          <div> class="pdf-container">
+            <object class="pdf-frame" [data]="pdfBlobUrl" type="application/pdf">
+                <a [href]="downloadUrl" target="_blank" rel="noopener">PDF’i indir</a>
+            </object>
+            </div>
+         </ng-container>
+
+          <!-- Hata -->
+          <div *ngIf="!pdfLoading && pdfError" class="pdf-error">
+            <i class="pi pi-exclamation-triangle"></i>
+            <div>PDF görüntülenemedi.</div>
+            <div class="tips">
+              <a [href]="previewUrl" target="_blank">Tarayıcıda aç</a> •
+              <a [href]="downloadUrl" target="_blank">İndir</a>
+            </div>
+            <button pButton label="Tekrar Dene" icon="pi pi-refresh" class="p-button-sm" (click)="reloadPdf()"></button>
+          </div>
+
+          <!-- Cam araç çubuğu -->
+        <div class="viewer-toolbar" *ngIf="!pdfLoading">
+          <span class="sep"></span>
+
+          <button class="btn" aria-label="Yenile" pTooltip="Yenile" (click)="reloadPdf()">
+            <i class="pi pi-refresh"></i>
+          </button>
+          <button class="btn" aria-label="Tarayıcıda aç" pTooltip="Tarayıcıda aç (yeni sekme)" (click)="openInNewTab()">
+            <i class="pi pi-external-link"></i>
+          </button>
+          <button class="btn" aria-label="İndir" pTooltip="İndir" (click)="downloadPdf()">
+            <i class="pi pi-download"></i>
+          </button>
+        </div>
         </div>
       </ng-template>
 
@@ -548,7 +601,7 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string; createdAt?: string
         <textarea pInputTextarea [(ngModel)]="chatInput" rows="2" placeholder="Sorunu yaz…"
                   [disabled]="!chatSessionId || chatBusy" style="flex:1"></textarea>
         <button pButton label="Gönder" icon="pi pi-send"
-                (click)="sendChat()" [disabled]="!chatSessionId || chatBusy || !chatInput.trim()"></button>
+                (click)="sendChat()" [disabled]="!chatSessionId || chatBusy || !this.chatInput.trim()"></button>
       </div>
     </div>
   </div>
@@ -562,6 +615,10 @@ export class DetailPage implements OnInit, OnDestroy {
     pdfBlobUrl?: SafeResourceUrl;
     private blobObjectUrl?: string;
     pdfError = false;
+    pdfLoading = false;
+    pdfMeta: { filename?: string; size?: string } = {};
+    private lastPdfReqToken = 0;
+
     pageCount = 0;
 
     previewUrl = '';
@@ -617,7 +674,7 @@ export class DetailPage implements OnInit, OnDestroy {
     similarLoading = false;
     similar: Array<DocInfo & { _sim?: number }> = [];
 
-    panelSizes: number[] = JSON.parse(localStorage.getItem('detailSplitter') || '[20,55,25]');
+    panelSizes: number[] = JSON.parse(localStorage.getItem('detailSplitter') || '[16,64,20]');
     leftHidden = false;
     rightHidden = false;
 
@@ -743,21 +800,57 @@ export class DetailPage implements OnInit, OnDestroy {
         if (this.blobObjectUrl) URL.revokeObjectURL(this.blobObjectUrl);
     }
 
+    private humanSize(n?: number): string {
+        if (!n || n <= 0) return '';
+        const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(n) / Math.log(1024));
+        return `${(n / Math.pow(1024, i)).toFixed(i ? 1 : 0)} ${u[i]}`;
+    }
+
+    private parseFilenameFromCD(cd?: string | null): string | undefined {
+        if (!cd) return;
+        const mStar = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(cd);
+        if (mStar) return decodeURIComponent(mStar[1]);
+        const m = /filename\s*=\s*"([^"]+)"/i.exec(cd) || /filename\s*=\s*([^;]+)/i.exec(cd);
+        return m?.[1]?.trim();
+    }
+
     private loadPdfBlob(url: string) {
         this.pdfError = false;
+        this.pdfLoading = true;
+        this.pdfMeta = {};
+
         if (this.blobObjectUrl) { URL.revokeObjectURL(this.blobObjectUrl); this.blobObjectUrl = undefined; }
         this.pdfBlobUrl = undefined;
 
-        this.http.get(url, { responseType: 'blob' }).subscribe({
-            next: (blob) => {
-                const mime = blob.type || 'application/pdf';
+        const token = ++this.lastPdfReqToken;
+
+        this.http.get(url, { responseType: 'blob', observe: 'response' }).subscribe({
+            next: (resp) => {
+                if (token !== this.lastPdfReqToken) return;
+
+                const blob = resp.body as Blob;
+                const mime = blob?.type || 'application/pdf';
                 const pdfBlob = mime.includes('pdf') ? blob : new Blob([blob], { type: 'application/pdf' });
+
+                const cd = resp.headers.get('Content-Disposition');
+                const cl = resp.headers.get('Content-Length');
+                this.pdfMeta = {
+                    filename: this.parseFilenameFromCD(cd) || this.doc?.filename,
+                    size: this.humanSize(Number(cl) || pdfBlob.size)
+                };
+
                 this.blobObjectUrl = URL.createObjectURL(pdfBlob);
                 this.pdfBlobUrl = this.san.bypassSecurityTrustResourceUrl(this.blobObjectUrl);
+                this.pdfLoading = false;
+
+                setTimeout(() => this.pokePdfResize(), 0);
             },
             error: (err) => {
+                if (token !== this.lastPdfReqToken) return;
                 console.error('PDF blob error', err);
                 this.pdfError = true;
+                this.pdfLoading = false;
             }
         });
     }
@@ -768,10 +861,18 @@ export class DetailPage implements OnInit, OnDestroy {
         const url = `${base}${sep}v=${Date.now()}`;
         this.loadPdfBlob(url);
     }
-    openInNewTab() { window.open(this.previewUrl, '_blank'); }
+    openInNewTab() {
+        if (!this.id) return;
+        
+        const base = this.api.inlineUrl(this.id);
+        const sep = base.includes('?') ? '&' : '?';
+        const url = `${base}${sep}v=${Date.now()}#view=FitH`; 
+        window.open(url, '_blank', 'noopener');
+    }
     downloadPdf() { window.open(this.downloadUrl, '_blank'); }
 
-    // —— Tag & summary & misc (seninkiyle aynı) ——
+
+    // —— Tag & summary & misc —— //
     joinTags(a: string[]): string { return (a || []).map(x => x.trim()).filter(Boolean).join(', '); }
     addTag(t: string) {
         if (!t) return;
@@ -935,17 +1036,21 @@ export class DetailPage implements OnInit, OnDestroy {
     }
     toggleLeft() {
         this.leftHidden = !this.leftHidden;
-        this.panelSizes = this.leftHidden ? [0, 75, 25] : JSON.parse(localStorage.getItem('detailSplitter') || '[20,55,25]');
+        this.panelSizes = this.leftHidden
+            ? [0, 75, 25]
+            : JSON.parse(localStorage.getItem('detailSplitter') || '[16,64,20]');
         setTimeout(() => this.pokePdfResize(), 0);
     }
     toggleRight() {
         this.rightHidden = !this.rightHidden;
-        this.panelSizes = this.rightHidden ? [25, 75, 0] : JSON.parse(localStorage.getItem('detailSplitter') || '[20,55,25]');
+        this.panelSizes = this.rightHidden
+            ? [25, 75, 0]
+            : JSON.parse(localStorage.getItem('detailSplitter') || '[16,64,20]');
         setTimeout(() => this.pokePdfResize(), 0);
     }
     resetPanels() {
         this.leftHidden = this.rightHidden = false;
-        this.panelSizes = [20, 55, 25];
+        this.panelSizes = [16, 64, 20];
         localStorage.setItem('detailSplitter', JSON.stringify(this.panelSizes));
         setTimeout(() => this.pokePdfResize(), 0);
     }
@@ -988,7 +1093,11 @@ export class DetailPage implements OnInit, OnDestroy {
 
     snapshot() { this.lastSnapshot = { tagsJson: JSON.stringify(this.tagsArr), cat: this.cat ?? '', summary: this.summary ?? '' }; }
     loadHistory() {
-        try { this.history = JSON.parse(localStorage.getItem(`detailHistory:${this.id}`) || '[]'); } catch { this.history = []; }
+        try {
+            this.history = JSON.parse(localStorage.getItem(`detailHistory:${this.id}`) || '[]');
+        } catch {
+            this.history = [];
+        }
     }
     private pushHistory(msg: string) {
         if (!msg) return;
@@ -1073,7 +1182,7 @@ export class DetailPage implements OnInit, OnDestroy {
 
     helpOpen = false;
 
-    // —— Chat bölümü (seninkiyle aynı) ——
+    // —— Chat bölümü —— //
     private scrollChatToBottom() {
         setTimeout(() => {
             const el = this.floatChatLog?.nativeElement;
