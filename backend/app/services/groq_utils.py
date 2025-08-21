@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import groq
 
 load_dotenv()
-MODEL = os.getenv("GROQ_MODEL", "llama3-8b-8192")
+MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 TEMPERATURE = float(os.getenv("GROQ_TEMPERATURE", "0.2"))
 _client = None
 
@@ -37,20 +37,28 @@ def extract_keywords(text: str) -> Dict[str, Any]:
     sys = {
         "role": "system",
         "content": (
-            "Türkçe metinlerden yüksek isabetli anahtar ifadeler çıkaran bir yardımcıdır. "
-            "Kurallar: (1) Sadece Türkçe yaz. (2) 1–3 kelimelik, bilgi değeri yüksek öbekler üret; "
-            "genel/boş (ör. 'giriş', 'özet') veya stopword içeren ifadeleri çıkarma. "
-            "Özel adları ve teknik terimleri koru, küçük/büyük harfleri doğal biçimde kullan. "
-            "Aynı kökten tekrarları verme."
+            "Türkçe metinlerden yüksek isabetli, kritik anahtar ifadeler çıkaran bir yardımcıdır.\n"
+            "Kurallar:\n"
+            "1. Sadece Türkçe yaz.\n"
+            "2. 1–5 kelimelik, bilgi değeri yüksek öbekler üret.\n"
+            "3. Genel/boş (ör. 'giriş', 'özet') veya stopword içeren ifadeleri çıkarma.\n"
+            "4. Özel adları, teknik terimleri, marka/kurum isimlerini koru.\n"
+            "5. Metindeki sayısal/veri tipindeki kritik bilgileri mutlaka çıkar:\n"
+            "   - Tutarlar (₺, TL, USD vb. para miktarları)\n"
+            "   - Tarihler (gün, ay, yıl, tam tarih)\n"
+            "   - Telefon numaraları\n"
+            "   - E-posta adresleri\n"
+            "   - Adres, il/ilçe, ülke adları\n"
+            "6. Yalnızca benzersiz ve önemli ifadeler döndür; aynı kökten tekrarları çıkar.\n"
+            "7. Küçük/büyük harfleri doğal biçimde koru.\n"
         ),
     }
     usr = {
         "role": "user",
         "content": (
-            "Aşağıdaki metinden EN AZ 5, EN FAZLA 12 anahtar ifade çıkar. "
+            "Aşağıdaki metinden EN AZ 5, EN FAZLA 15 kritik anahtar ifade çıkar.\n"
             "YANIT BİÇİMİ: Sadece virgülle ayrık TEK SATIR CSV döndür; "
-            "virgülden sonra boşluk bırakma; tırnak, numara, madde imi, açıklama ekleme. "
-            "Örnek biçim: kelime1,kelime2,kelime3\n\n"
+            "virgülden sonra boşluk bırakma; tırnak, numara, madde imi, açıklama ekleme.\n\n"
             f"Metin:\n{text}"
         ),
     }
@@ -62,9 +70,8 @@ def extract_keywords(text: str) -> Dict[str, Any]:
         if ck not in seen:
             seen.add(ck)
             ordered.append(k)
-    # İsteğe göre kırp (maksimum 12)
-    ordered = ordered[:12]
-    return {"keywords": [{"kw": k} for k in ordered]}
+    return {"keywords": [{"kw": k} for k in ordered[:15]]}
+
 
 
 def summarize_text(text: str) -> str:
