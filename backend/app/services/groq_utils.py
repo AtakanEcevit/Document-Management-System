@@ -107,8 +107,13 @@ def predict_category(
             "(3) Çıktı TEK SATIR olmalı."
         ),
     }
+    usr = {
+        "role": "user",
+        "content": f"Metnin türünü türkçe tek kısa kategori adıyla döndür (ör: Fatura, Özgeçmiş). Sadece ad.\n\n{text}",
+    }
     raw = _chat([sys, usr]) or ""
     cat = next((ln.strip() for ln in raw.splitlines() if ln.strip()), fallback)
     if allowed and cat not in allowed:
         return fallback
     return cat
+
