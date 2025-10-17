@@ -207,8 +207,6 @@ This project is licensed under the [MIT License](LICENSE).
 
 ---
 
-## 🙏 Acknowledgements
-
 ## SPECIAL THANKS FOR MY PROJECT MEMBERS FOR MAKING THIS APPLICATION POSSIBLE:
 * Alp Demiral
 * Betül Tüncel
@@ -216,7 +214,9 @@ This project is licensed under the [MIT License](LICENSE).
 * Engin Büyükdığan
 * Yasin Berk Şimşek
 
+---
 
+## 🙏 Acknowledgements
 
 * [FastAPI](https://fastapi.tiangolo.com/) & \[Pydantic]
 * [Angular](https://angular.dev/) & [PrimeNG](https://primeng.org/)
