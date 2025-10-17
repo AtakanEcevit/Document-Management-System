@@ -210,11 +210,11 @@ This project is licensed under the [MIT License](LICENSE).
 ## 🙏 Acknowledgements
 
 ## SPECIAL THANKS FOR MY PROJECT MEMBERS FOR MAKING THIS APPLICATION POSSIBLE:
-Alp Demiral
-Betül Tüncel
-Beyza Savaşçı
-Engin Büyükdığan
-Yasin Berk Şimşek
+* Alp Demiral
+* Betül Tüncel
+* Beyza Savaşçı
+* Engin Büyükdığan
+* Yasin Berk Şimşek
 
 
 
