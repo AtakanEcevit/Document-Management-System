@@ -11,6 +11,9 @@
 
 ---
 
+
+
+
 ## ✨ Highlights
 
 * **Drag & drop** PDF uploads with automatic text extraction
@@ -19,12 +22,18 @@
 * **Chat with your documents** (context‑aware Q\&A)
 * **FastAPI + PostgreSQL** backend, **Angular + PrimeNG** frontend
 * **Dockerized** for easy setup and deployment
+* <img width="1917" height="911" alt="analyze_view_in_use" src="https://github.com/user-attachments/assets/7ea9ac17-1905-4da9-93ea-7e46e0ad5ca6" />
+* <img width="1918" height="901" alt="library_view_filter" src="https://github.com/user-attachments/assets/f5ea475a-985e-4bf8-8e19-4b662b9d4fb4" />
+
 
 > \[!TIP]
 > The chatbot remembers the **currently opened document** so you don’t need to repeat file context.
 
 
 ---
+
+
+
 
 ## 🧱 Architecture
 
