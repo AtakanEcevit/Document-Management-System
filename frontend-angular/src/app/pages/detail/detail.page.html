@@ -1,0 +1,279 @@
+<div class="detail-bg">
+    <p-toast></p-toast>
+    <p-confirmDialog></p-confirmDialog>
+
+    <!-- Header -->
+    <div class="header" [attr.aria-busy]="savingAll">
+      <i class="pi pi-file-pdf" style="font-size:1.25rem;"></i>
+      <div class="hdr-title">
+        <span class="name">{{ doc?.filename || 'Belge' }}</span>
+        <p-tag [severity]="isDirty ? 'warning' : 'success'" [value]="isDirty ? 'Kayıtsız' : 'Kaydedildi'" rounded></p-tag>
+        <p-tag *ngIf="!online" severity="danger" value="Çevrimdışı" rounded class="small"></p-tag>
+      </div>
+      <span class="meta small">Yüklendi: {{ doc?.uploadedAt }}</span>
+      <span class="grow"></span>
+
+      <div class="quick-stats small">
+        <span class="pill"><i class="pi pi-file"></i> {{pageCount || '—'}} syf</span>
+        <span class="pill" *ngIf="cat"><i class="pi pi-folder"></i> {{cat}}</span>
+        <span class="pill"><i class="pi pi-tags"></i> {{tagsArr?.length || 0}}</span>
+      </div>
+
+      <div class="splitter-controls small meta">
+        <button pButton icon="pi pi-chevron-left" class="p-button-text p-button-sm" pTooltip="Sol paneli gizle/göster" (click)="toggleLeft()"></button>
+        <button pButton icon="pi pi-chevron-right" class="p-button-text p-button-sm" pTooltip="Sağ paneli gizle/göster" (click)="toggleRight()"></button>
+        <button pButton icon="pi pi-window-maximize" class="p-button-text p-button-sm" pTooltip="Panel boyutlarını sıfırla" (click)="resetPanels()"></button>
+        <button pButton [outlined]="!zenMode" icon="pi pi-eye" label="Zen" class="p-button-sm" (click)="toggleZen()" pTooltip="PDF'e odaklan (Zen)"></button>
+        <button pButton [outlined]="!dense" icon="pi pi-compress" class="p-button-sm" label="{{dense ? 'Rahat' : 'Sıkışık'}}" (click)="toggleDensity()" pTooltip="Yoğunluk"></button>
+      </div>
+
+      <button pButton label="Kaydet" icon="pi pi-check"
+              class="p-button-sm p-button-success" (click)="saveAll()"
+              [ngClass]="{'pulse': savedPulse}" [disabled]="savingAll || !isDirty"
+              pTooltip="Ctrl+S"></button>
+
+      <div *ngIf="savingAll" class="saving-stripe"></div>
+    </div>
+
+    <!-- 3-Pane -->
+    <p-splitter styleClass="p-mt-3"
+                [gutterSize]="8"
+                [panelSizes]="panelSizes"
+                [minSizes]="[16,40,20]"
+                (onResizeEnd)="saveSplitter($event)"
+                [style]="{height: 'calc(100vh - 240px)'}">
+
+      <!-- Sol -->
+      <ng-template pTemplate>
+        <div class="panel-pad cardish" [style.display]="leftHidden ? 'none' : 'block'">
+          <h3 style="margin-top:.25rem;">Belge Bilgileri</h3>
+          <div class="field">
+            <div class="label">Belge ID</div>
+            <div style="display:flex; gap:.5rem;">
+              <input pInputText [value]="id" readonly aria-label="Belge ID">
+              <button pButton class="p-button-text p-button-sm" icon="pi pi-copy" (click)="copy(id)" pTooltip="ID'yi kopyala"></button>
+            </div>
+          </div>
+          <div class="field">
+            <div class="label">Dosya Adı</div>
+            <input pInputText [value]="doc?.filename" readonly aria-label="Dosya adı">
+          </div>
+          <div class="field">
+            <div class="label">Yüklenme</div>
+            <input pInputText [value]="doc?.uploadedAt" readonly aria-label="Yüklenme tarihi">
+          </div>
+
+          <div class="statusbar">
+            <span class="meta small">Son kayıt: {{lastSavedAt || '—'}}</span>
+            <span *ngIf="savingAll" class="small">• Kaydediliyor…</span>
+            <span class="grow"></span>
+            <span class="small meta" *ngIf="isDirty">Değişiklikler kaydedilmedi.</span>
+          </div>
+        </div>
+      </ng-template>
+
+      <!-- Orta: PDF (Blob + native viewer; iyileştirilmiş) -->
+      <ng-template pTemplate>
+        <div class="panel-pad cardish center-pane" style="position:relative; min-height:0;">
+          <!-- Yükleme -->
+          <div *ngIf="pdfLoading" class="pdf-loading">
+            <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+            <span>PDF yükleniyor…</span>
+          </div>
+
+          <!-- Başarılı -->
+         <ng-container *ngIf="!pdfLoading && !pdfError">
+          <div> class="pdf-container">
+            <object class="pdf-frame" [data]="pdfBlobUrl" type="application/pdf">
+                <a [href]="downloadUrl" target="_blank" rel="noopener">PDF’i indir</a>
+            </object>
+            </div>
+         </ng-container>
+
+          <!-- Hata -->
+          <div *ngIf="!pdfLoading && pdfError" class="pdf-error">
+            <i class="pi pi-exclamation-triangle"></i>
+            <div>PDF görüntülenemedi.</div>
+            <div class="tips">
+              <a [href]="previewUrl" target="_blank">Tarayıcıda aç</a> •
+              <a [href]="downloadUrl" target="_blank">İndir</a>
+            </div>
+            <button pButton label="Tekrar Dene" icon="pi pi-refresh" class="p-button-sm" (click)="reloadPdf()"></button>
+          </div>
+
+          <!-- Cam araç çubuğu -->
+        <div class="viewer-toolbar" *ngIf="!pdfLoading">
+          <span class="sep"></span>
+
+          <button class="btn" aria-label="Yenile" pTooltip="Yenile" (click)="reloadPdf()">
+            <i class="pi pi-refresh"></i>
+          </button>
+          <button class="btn" aria-label="Tarayıcıda aç" pTooltip="Tarayıcıda aç (yeni sekme)" (click)="openInNewTab()">
+            <i class="pi pi-external-link"></i>
+          </button>
+          <button class="btn" aria-label="İndir" pTooltip="İndir" (click)="downloadPdf()">
+            <i class="pi pi-download"></i>
+          </button>
+        </div>
+        </div>
+      </ng-template>
+
+      <!-- Sağ: Tabs -->
+      <ng-template pTemplate>
+        <div class="panel-pad cardish right-pane" [style.display]="rightHidden ? 'none' : 'block'">
+          <p-tabView [(activeIndex)]="tabIndex" (activeIndexChange)="onTabChange($event)">
+            <p-tabPanel header="Etiketler">
+              <div class="tab-scroll">
+                <div class="field">
+                  <div class="label">Etiketler</div>
+                  <p-autoComplete
+                    [(ngModel)]="tagsArr"
+                    (ngModelChange)="onDirty()"
+                    [suggestions]="tagSuggestions"
+                    (completeMethod)="searchTagSuggestions($event)"
+                    [multiple]="true"
+                    [dropdown]="true"
+                    [virtualScroll]="true"
+                    [forceSelection]="false"
+                    placeholder="etiket ekle (↵ ile ekle, , ile ayır)"
+                    [style]="{width: '100%'}"
+                    inputAriaLabel="Etiketleri düzenle">
+                  </p-autoComplete>
+                  <div *ngIf="trendTags.length" class="meta small" style="margin-top:.35rem;">Trend:</div>
+                  <div *ngIf="trendTags.length" style="display:flex; gap:.35rem; flex-wrap:wrap; margin-top:.25rem;">
+                    <p-chip *ngFor="let t of trendTags" class="chip-trend" [label]="t" (click)="addTag(t)"></p-chip>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <div class="label">Tag Şablonları</div>
+                  <div style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
+                    <input pInputText [(ngModel)]="tplName" placeholder="ör. Sözleşme paketi" style="flex:1 1 auto;" (keyup.enter)="saveTagTemplate()">
+                    <button pButton label="Kaydet" icon="pi pi-save" class="p-button-sm" (click)="saveTagTemplate()"></button>
+                  </div>
+                  <div *ngIf="tagTemplates.length" style="display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.5rem;">
+                    <p-chip *ngFor="let tpl of tagTemplates; let i = index"
+                            [label]="tpl.name"
+                            (click)="applyTagTemplate(i)"
+                            removable
+                            (onRemove)="deleteTagTemplate(i)"></p-chip>
+                  </div>
+                </div>
+              </div>
+            </p-tabPanel>
+
+            <p-tabPanel header="Özet">
+              <div class="tab-scroll">
+                <div class="field">
+                  <div class="label">Hedef uzunluk: {{targetWords}} kelime</div>
+                  <p-slider [(ngModel)]="targetWords" [min]="60" [max]="240" [step]="5" (onChange)="onSummaryMetrics()"></p-slider>
+                </div>
+
+                <div class="field">
+                  <div class="label">Özet</div>
+                  <textarea pInputTextarea rows="12" [(ngModel)]="summary" (ngModelChange)="onDirty(); onSummaryMetrics()"
+                            placeholder="Belgenin özlü bir özeti…" aria-label="Belge özeti"></textarea>
+                  <div class="meta" style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
+                    <span>Kelime: {{summaryWords}}</span>
+                    <p-progressBar [value]="summaryScore" [showValue]="false" style="flex:1"></p-progressBar>
+                    <span [style.color]="summaryColor">{{summaryHint}}</span>
+                    <button pButton class="p-button-text p-button-sm" icon="pi pi-minus-circle" label="Kısalt" (click)="smartShorten()"></button>
+                    <button pButton class="p-button-text p-button-sm" icon="pi pi-plus-circle" label="Genişlet" (click)="smartExpand()"></button>
+                    <button pButton class="p-button-text p-button-sm" icon="pi pi-times" label="Temizle" (click)="summary=''; onSummaryMetrics(); onDirty()"></button>
+                  </div>
+                </div>
+              </div>
+            </p-tabPanel>
+
+            <p-tabPanel header="Özellikler">
+              <div class="tab-scroll">
+                <div class="field">
+                  <div class="label">Kategori</div>
+                  <p-dropdown
+                    [options]="categoryOptions"
+                    [(ngModel)]="cat"
+                    (ngModelChange)="onDirty()"
+                    [filter]="true"
+                    [editable]="true"
+                    placeholder="ör. Finans, İK, Sözleşme"
+                    optionLabel="label"
+                    optionValue="value"
+                    [showClear]="true"
+                    ariaLabel="Kategori seç">
+                  </p-dropdown>
+                </div>
+
+                <div class="field">
+                  <div class="label">Önizleme</div>
+                  <a pButton icon="pi pi-eye" label="Önizleme" class="p-button-sm" [href]="previewUrl" target="_blank"></a>
+                </div>
+
+                <div class="statusbar">
+                  <span class="meta small">Son kayıt: {{lastSavedAt || '—'}} </span>
+                  <span *ngIf="savingAll" class="small">• Kaydediliyor…</span>
+                  <span class="grow"></span>
+                  <span class="small meta" *ngIf="isDirty">Değişiklikler kaydedilmedi.</span>
+                </div>
+              </div>
+            </p-tabPanel>
+          </p-tabView>
+        </div>
+      </ng-template>
+    </p-splitter>
+
+    <p-speedDial [model]="dialItems" direction="up" type="quarter-circle"
+                 [style]="{position:'fixed', left:'16px', bottom:'16px', zIndex:35}"></p-speedDial>
+
+    <div class="chat-fab-wrap">
+      <div class="fab-coach" *ngIf="fabIntro">Sohbeti deneyin 👋</div>
+      <button class="chat-fab" (click)="toggleChat()"
+              [ngClass]="{'fab-attn': fabIntro}"
+              pTooltip="{{chatOpen ? 'Kapat' : 'Sohbet'}}" tooltipPosition="left" aria-label="Sohbeti aç/kapat">
+        <i class="pi" [ngClass]="chatOpen ? 'pi-times' : 'pi-comments'"></i>
+        <span class="fab-ping" *ngIf="fabIntro"></span>
+      </button>
+    </div>
+
+    <div class="chat-float" *ngIf="chatOpen">
+      <div class="chat-head">
+        <i class="pi pi-sparkles"></i>
+        <div class="title">Belge Sohbeti</div>
+        <span class="grow"></span>
+        <button class="iconbtn" (click)="fxMuted = !fxMuted; saveFxPref()" pTooltip="{{fxMuted ? 'Sesi Aç' : 'Sesi Kapat'}}">
+          <i class="pi" [ngClass]="fxMuted ? 'pi-volume-off' : 'pi-volume-up'"></i>
+        </button>
+        <button class="iconbtn" (click)="resetChat()" pTooltip="Yeni Sohbet">
+          <i class="pi pi-refresh"></i>
+        </button>
+        <button class="iconbtn" (click)="toggleChat()" pTooltip="Kapat">
+          <i class="pi pi-times"></i>
+        </button>
+      </div>
+
+      <div class="chat-body" #floatChatLog>
+        <div *ngIf="!chatSessionId" class="meta" style="margin-bottom:.5rem;">
+          Bu belgeyle sohbet etmek için bir oturum başlatın.
+          <button pButton label="Yeni Sohbet" icon="pi pi-comments" class="p-button-sm" (click)="startChat()" [disabled]="chatBusy"></button>
+        </div>
+
+        <ng-container *ngIf="chatSessionId">
+          <div *ngFor="let m of chatMessages" style="display:flex;">
+            <div class="bubble" [ngClass]="m.role==='user' ? 'bubble-user enter-right' : 'bubble-ai enter-left'">
+              <div>{{m.content}}</div>
+              <div class="meta small" *ngIf="m.createdAt">{{m.createdAt}}</div>
+            </div>
+          </div>
+          <div *ngIf="chatBusy" class="bubble bubble-ai typing enter-left">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+        </ng-container>
+      </div>
+
+      <div class="chat-input">
+        <textarea pInputTextarea [(ngModel)]="chatInput" rows="2" placeholder="Sorunu yaz…"
+                  [disabled]="!chatSessionId || chatBusy" style="flex:1"></textarea>
+        <button pButton label="Gönder" icon="pi pi-send"
+                (click)="sendChat()" [disabled]="!chatSessionId || chatBusy || !this.chatInput.trim()"></button>
+      </div>
+    </div>
+  </div>

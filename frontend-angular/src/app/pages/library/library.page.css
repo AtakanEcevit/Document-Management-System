@@ -1,0 +1,112 @@
+/* ---------- Design tokens ---------- */
+    :host{
+      --brand-h: 256; --brand-s: 86%; --brand-l: 64%;
+      --brand: hsl(var(--brand-h) var(--brand-s) var(--brand-l));
+      --accent: hsl(198 86% 62%);
+      --surface-0:#0b0f14; --surface-1:#10161f; --surface-2:#121a25;
+      --border: rgba(255,255,255,.08);
+      --muted: #a3b0c2;
+      --radius: 12px;
+      --elev-1: 0 1px 2px rgba(0,0,0,.18), 0 10px 26px rgba(0,0,0,.22);
+      --elev-2: 0 2px 8px rgba(0,0,0,.24), 0 20px 36px rgba(0,0,0,.24);
+    }
+
+    /* ---------- Background with gradient noise ---------- */
+    .library-bg{
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(130,103,255,.08), transparent 60%),
+        radial-gradient(900px 520px at 110% 10%, rgba(47,159,255,.07), transparent 50%),
+        var(--surface-0);
+      position:relative; display:block; min-height:100%;
+    }
+    .library-bg::before{
+      content:''; position:fixed; inset:-20vh; pointer-events:none; z-index:-1;
+      background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMjAnIGhlaWdodD0nMTIwJyB2aWV3Qm94PScwIDAgMTIwIDEyMCc+PGZpbHRlciBpZD0nbic+PGZlVHVyYnVsZW5jZSB0eXBlPSdmcmFjdGFsTm9pc2UnIGJhc2VGcmVxdWVuY3k9JzAuNicgbnVtT2N0YXZlcz0nMicgc3RpdGNoVGlsZXM9J3N0aXRjaCcvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPScxMjAnIGhlaWdodD0nMTIwJyBmaWx0ZXI9J3VybCgjbiknIG9wYWNpdHk9JzAuMDEyJy8+PC9zdmc+");
+      background-size: 240px 240px;
+    }
+
+    /* ---------- Toolbar (glass) ---------- */
+    .toolbar { 
+      display:flex; gap:.75rem; align-items:flex-end; flex-wrap:wrap; 
+      padding:.65rem; border:1px solid var(--border); border-radius:.9rem;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      box-shadow: 0 6px 18px rgba(0,0,0,.2), 0 12px 32px rgba(0,0,0,.18);
+      backdrop-filter: blur(8px);
+      position: sticky; top: .5rem; z-index: 5;
+    }
+    .toolbar .p-inputtext{ min-width: 260px; }
+    .view-toggle { display:flex; gap:.25rem; }
+    .meta { opacity:.75; }
+
+    /* Quick stats */
+    .quick-stats{ display:flex; gap:.35rem; align-items:center; flex-wrap:wrap; margin-top:.5rem; }
+    .pill{ padding:.25rem .55rem; border-radius:999px; border:1px solid var(--border); background:rgba(255,255,255,.03); }
+
+    /* ---------- Cards & grid ---------- */
+    .grid-auto-fit{ display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:1rem; }
+    .cardish{
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--elev-1);
+      transition: box-shadow .2s ease, transform .08s ease, border-color .2s ease;
+      animation: pop .18s ease;
+    }
+    .card-item{
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.02);
+      box-shadow: var(--elev-1);
+      padding: .9rem;
+      display:grid; gap: .5rem;
+      transition: transform .08s ease, box-shadow .2s ease;
+      cursor: pointer;
+    }
+    .card-item:hover{ transform: translateY(-2px); box-shadow: var(--elev-2); }
+    .file-title{ font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .actions{ display:flex; gap:.5rem; justify-content:flex-end; }
+    .chips{ display:flex; flex-wrap:wrap; gap:.35rem; }
+
+    /* Selected state */
+    .selected { outline: 2px solid color-mix(in hsl, var(--brand), white 10%); outline-offset: 2px; border-radius:.6rem; }
+    tr.selected{ background: rgba(124,77,255,.08); }
+
+    /* Filters & sticky actions */
+    .filters { display:flex; flex-wrap:wrap; gap:.5rem; }
+    .sticky-actions{
+      position: sticky; top: calc(.5rem + 64px); z-index: 4;
+      display:flex; gap:.5rem; flex-wrap:wrap; align-items:center;
+      padding:.5rem; border:1px solid var(--border);
+      border-radius:.6rem; background: rgba(15, 17, 28, .65); backdrop-filter: blur(8px);
+      box-shadow: var(--elev-1);
+    }
+
+    /* Table tweaks */
+    .list-compact td { padding:.5rem .65rem; }
+    :host ::ng-deep .p-table thead th{ position:sticky; top:0; background:var(--surface-1); z-index:1; }
+
+    /* Highlight */
+    .highlight mark{ background: rgba(56,189,248,.35); color: inherit; padding:0 .1rem; border-radius:.2rem; }
+
+    /* Scrollbars */
+    *::-webkit-scrollbar{ width:10px; height:10px;}
+    *::-webkit-scrollbar-thumb{
+      background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.08));
+      border: 2px solid transparent; border-radius: 999px; background-clip: padding-box;
+    }
+    *::-webkit-scrollbar-track{ background: transparent;}
+
+    /* Button pulse (save view) */
+    @keyframes greenPulse { from{ box-shadow:0 0 0 0 rgba(16,185,129,.35);} to{ box-shadow:0 0 0 14px rgba(16,185,129,0);} }
+    .p-button.pulse{ animation: greenPulse .8s ease-out 1; }
+
+    /* Micro animation */
+    @keyframes pop { from{ transform: scale(.98); opacity:.8 } to{ transform: scale(1); opacity:1 } }
+
+    /* Density toggle */
+    :host ::ng-deep body.compact .card-item{ padding:.6rem !important; }
+    :host ::ng-deep body.compact .p-inputtext, :host ::ng-deep body.compact .p-dropdown, :host ::ng-deep body.compact .p-multiselect{
+      font-size: 13px; line-height:1.15;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      *{ animation: none !important; transition: none !important; }
+    }

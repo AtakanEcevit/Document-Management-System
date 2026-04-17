@@ -1,0 +1,219 @@
+<div class="library-bg" [@fadeIn]>
+    <p-toast></p-toast>
+    <p-confirmDialog></p-confirmDialog>
+
+    <!-- Üst Araç Çubuğu -->
+    <div class="toolbar" [@fadeIn]>
+      <div class="p-input-icon-left">
+        <i class="pi pi-search"></i>
+        <input #searchBox pInputText type="text" placeholder="Ara ( / ile odak )"
+               [(ngModel)]="q" (ngModelChange)="onFiltersChanged()">
+      </div>
+
+      <p-dropdown [options]="categoryOptions" [(ngModel)]="catFilter"
+                  placeholder="Kategori" [showClear]="true"
+                  (onChange)="onFiltersChanged()"></p-dropdown>
+
+      <p-multiSelect [options]="tagOptions" [(ngModel)]="tagFilter"
+                     defaultLabel="Etiketler" [filter]="true" [showClear]="true"
+                     (onChange)="onFiltersChanged()"></p-multiSelect>
+
+      <p-calendar [(ngModel)]="dateFrom" dateFormat="yy-mm-dd" placeholder="Başlangıç"
+                  (onSelect)="onFiltersChanged()" [showIcon]="true"></p-calendar>
+      <p-calendar [(ngModel)]="dateTo" dateFormat="yy-mm-dd" placeholder="Bitiş"
+                  (onSelect)="onFiltersChanged()" [showIcon]="true"></p-calendar>
+
+      <p-dropdown [options]="sortOptions" [(ngModel)]="sortBy" placeholder="Sırala"
+                  (onChange)="onFiltersChanged()"></p-dropdown>
+
+      <span style="flex:1 1 auto;"></span>
+
+      <!-- Yükleme (PrimeNG customUpload) -->
+      <p-fileUpload
+        #uploader
+        mode="basic"
+        [customUpload]="true"
+        [auto]="true"
+        [showUploadButton]="false"
+        [showCancelButton]="false"
+        [multiple]="false"
+        [accept]="'.pdf,application/pdf'"
+        [maxFileSize]="50_000_000"
+        [chooseLabel]="'PDF Yükle'"
+        (uploadHandler)="onUpload($event)">
+      </p-fileUpload>
+
+      <!-- Görünüm toggle -->
+      <div class="view-toggle">
+        <button pButton class="p-button-text" [outlined]="view!=='grid'" icon="pi pi-th-large" (click)="setView('grid')" aria-label="Grid" pTooltip="Grid"></button>
+        <button pButton class="p-button-text" [outlined]="view!=='list'" icon="pi pi-bars" (click)="setView('list')" aria-label="Liste" pTooltip="Liste"></button>
+      </div>
+
+      <button pButton class="p-button-text" icon="pi pi-compress" [outlined]="!dense" label="{{dense ? 'Rahat' : 'Sıkışık'}}" (click)="toggleDensity()" pTooltip="Yoğunluk"></button>
+
+      <button pButton class="p-button-text" icon="pi pi-save" label="Görünümü Kaydet" (click)="saveView()" [ngClass]="{'pulse': savedPulse}"></button>
+      <button pButton class="p-button-text" icon="pi pi-refresh" (click)="reload()" aria-label="Yenile" pTooltip="Yenile"></button>
+    </div>
+
+    <!-- Quick stats -->
+    <div class="quick-stats" *ngIf="total>=0" [@fadeInUp]>
+      <span class="pill"><i class="pi pi-database"></i> {{ total }} sonuç</span>
+      <span class="pill" *ngIf="total>0"><i class="pi pi-list"></i> {{ first + 1 }}–{{ Math.min(first + rows, total) }}</span>
+      <span class="pill" *ngIf="hasActiveFilters()"><i class="pi pi-filter"></i> Filtre etkin</span>
+    </div>
+
+    <!-- Aktif filtre özet pill'leri -->
+    <div class="filters" *ngIf="hasActiveFilters()" style="margin-top:.5rem;" [@fadeIn]>
+      <span class="pill" *ngIf="q">Arama: "{{q}}" <button pButton class="p-button-text p-button-sm" icon="pi pi-times" (click)="q=''; onFiltersChanged()"></button></span>
+      <span class="pill" *ngIf="catFilter">Kategori: {{catFilter}} <button pButton class="p-button-text p-button-sm" icon="pi pi-times" (click)="catFilter=undefined; onFiltersChanged()"></button></span>
+      <span class="pill" *ngFor="let t of tagFilter">#{{t}} <button pButton class="p-button-text p-button-sm" icon="pi pi-times" (click)="removeTagFilter(t)"></button></span>
+      <span class="pill" *ngIf="dateFrom">Başlangıç: {{dateFrom | date:'yyyy-MM-dd'}}</span>
+      <span class="pill" *ngIf="dateTo">Bitiş: {{dateTo | date:'yyyy-MM-dd'}}</span>
+      <button pButton class="p-button-text" label="Filtreleri temizle" (click)="clearFilters()"></button>
+    </div>
+
+    <!-- Toplu Aksiyonlar (Sticky) -->
+    <div class="sticky-actions" *ngIf="selected.length" [@fadeInUp]>
+      <span class="meta">{{selected.length}} seçildi</span>
+      <button pButton icon="pi pi-refresh" label="Yeniden Analiz" class="p-button-sm"
+              (click)="confirmReanalyzeSelected()"></button>
+      <button pButton icon="pi pi-download" label="CSV (sayfa)" class="p-button-sm p-button-outlined"
+              (click)="exportCsv()"></button>
+      <button pButton icon="pi pi-times" class="p-button-text p-button-sm"
+              (click)="selected=[]" aria-label="Seçimi temizle"></button>
+    </div>
+
+    <!-- Loading skeleton grid -->
+    <div *ngIf="loading" class="grid-auto-fit" style="margin-top:1rem;" [@listStagger]="8">
+      <div *ngFor="let _ of [1,2,3,4,5,6,7,8]" class="card-item" [@scaleIn]>
+        <p-skeleton width="60%" height="1.2rem"></p-skeleton>
+        <p-skeleton width="40%" height="1rem"></p-skeleton>
+        <div style="display:flex; gap:.4rem; flex-wrap:wrap;">
+          <p-skeleton width="64px" height="24px" borderRadius="999px"></p-skeleton>
+          <p-skeleton width="72px" height="24px" borderRadius="999px"></p-skeleton>
+          <p-skeleton width="56px" height="24px" borderRadius="999px"></p-skeleton>
+        </div>
+        <div class="actions"><p-skeleton width="96px" height="2rem" borderRadius="8px"></p-skeleton></div>
+      </div>
+    </div>
+
+    <!-- Empty -->
+    <div *ngIf="!loading && !pageItems?.length" class="cardish" style="padding:24px; text-align:center; margin-top:16px;" [@fadeIn]>
+      <div style="font-weight:700; margin-bottom:6px;">Sonuç bulunamadı</div>
+      <div class="meta">Filtreleri temizlemeyi veya farklı bir anahtar kelime denemeyi deneyin.</div>
+    </div>
+
+    <!-- GRID görünüm -->
+    <div *ngIf="!loading && pageItems?.length && view==='grid'" class="grid-auto-fit" style="margin-top:1rem;" [@listStagger]="pageItems?.length">
+      <div *ngFor="let d of pageItems" class="card-item" [class.selected]="isSelected(d)"
+           (click)="toggleSelect(d)" (dblclick)="open(d.id)" pTooltip="Çift tık: Aç" [@scaleIn]>
+        <div class="file-title highlight" [innerHTML]="highlight(d.filename)"></div>
+        <div class="meta">{{ d.uploadedAt }} • {{ d.category || 'Kategori yok' }}</div>
+        <div class="chips" *ngIf="d.tags?.length">
+          <ng-container *ngFor="let t of d.tags">
+            <p-chip [label]="t"></p-chip>
+          </ng-container>
+        </div>
+        <div class="actions">
+          <button pButton icon="pi pi-eye" class="p-button-text" (click)="open(d.id); $event.stopPropagation();" aria-label="Detaya git" pTooltip="Detaya git"></button>
+          <a pButton icon="pi pi-download" class="p-button-text"
+             [href]="api.downloadUrl(d.id)" [attr.download]="d.filename"
+             (click)="$event.stopPropagation()" aria-label="İndir" pTooltip="İndir"></a>
+          <button pButton icon="pi pi-search" class="p-button-text" (click)="openPreview(d); $event.stopPropagation();" aria-label="Önizleme" pTooltip="Önizleme"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LİSTE görünüm -->
+    <div *ngIf="!loading && pageItems?.length && view==='list'" [@fadeInUp]>
+      <p-table 
+           class="list-compact p-mt-3"
+           [value]="pageItems"
+           [paginator]="false"
+           [responsiveLayout]="'scroll'">
+        <ng-template pTemplate="header">
+          <tr>
+            <th style="width:1%"><p-checkbox [(ngModel)]="allChecked" [binary]="true" (onChange)="toggleSelectAll()"></p-checkbox></th>
+            <th>Dosya</th>
+            <th>Yüklenme</th>
+            <th>Kategori</th>
+            <th>Etiketler</th>
+            <th style="width:1%"></th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-d>
+          <tr [class.selected]="isSelected(d)" [@fadeInUp]>
+            <td><p-checkbox [ngModel]="isSelected(d)" [binary]="true" (onChange)="toggleSelect(d)"></p-checkbox></td>
+            <td class="highlight" [innerHTML]="highlight(d.filename)"></td>
+            <td>{{ d.uploadedAt }}</td>
+            <td>{{ d.category }}</td>
+            <td>
+              <ng-container *ngFor="let t of d.tags">
+                <p-chip [label]="t" class="p-mr-2 p-mb-2"></p-chip>
+              </ng-container>
+            </td>
+            <td class="p-text-right">
+              <button pButton icon="pi pi-eye" class="p-button-text" (click)="open(d.id)" aria-label="Detaya git" pTooltip="Detaya git"></button>
+              <a pButton icon="pi pi-download" class="p-button-text"
+                 [href]="api.downloadUrl(d.id)" [attr.download]="d.filename" aria-label="İndir" pTooltip="İndir"></a>
+              <button pButton icon="pi pi-search" class="p-button-text" (click)="openPreview(d)" aria-label="Önizleme" pTooltip="Önizleme"></button>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+
+    <!-- Sayfalama (grid & list için ortak) -->
+    <div [@fadeIn] *ngIf="!loading && total>rows">
+      <p-paginator 
+                 styleClass="p-mt-3"
+                 [rows]="rows" [totalRecords]="total" [first]="first"
+                 (onPageChange)="onPage($event)"></p-paginator>
+    </div>
+
+    <!-- Önizleme yan paneli -->
+    <p-sidebar
+      [(visible)]="previewOpen"
+      position="right"
+      [baseZIndex]="10000"
+      [style]="{width:'560px'}"
+      (onHide)="onPreviewHide()"
+    >
+      <h3 style="margin-top:0;" [@fadeIn]>Önizleme</h3>
+
+      <div *ngIf="!previewDoc" class="meta" [@fadeIn]>Seçili belge yok.</div>
+
+      <div *ngIf="previewDoc" [@fadeInUp]>
+        <div style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="previewDoc.filename">
+          {{previewDoc.filename}}
+        </div>
+        <div class="meta">{{previewDoc.uploadedAt}} • {{previewDoc.category || '—'}}</div>
+        <div class="chips" style="margin:.5rem 0;" *ngIf="previewDoc.tags?.length">
+          <ng-container *ngFor="let t of previewDoc.tags">
+            <p-chip [label]="t"></p-chip>
+          </ng-container>
+        </div>
+        <div class="p-mb-2" style="display:flex; gap:.5rem;">
+          <button pButton label="Aç" icon="pi pi-eye" class="p-button-sm" (click)="open(previewDoc.id)"></button>
+          <a pButton label="İndir" icon="pi pi-download" class="p-button-sm p-button-outlined"
+             [href]="api.downloadUrl(previewDoc.id)" [attr.download]="previewDoc.filename"></a>
+        </div>
+
+        <div class="p-mb-2 meta">Hızlı önizleme için düşük çözünürlüklü PDF gömülür.</div>
+
+        <div style="height:60vh" class="cardish" [@fadeIn]>
+          <!-- DOM'u yeniden kurmak için guard -->
+          <ng-container *ngIf="previewIframeReady && previewSafeUrl; else previewLoading">
+            <iframe
+              [src]="previewSafeUrl"
+              style="width:100%;height:100%;border:0;border-radius:.6rem;"
+              referrerpolicy="no-referrer"
+            ></iframe>
+          </ng-container>
+          <ng-template #previewLoading>
+            <div class="meta" style="padding:.75rem;">Önizleme hazırlanıyor…</div>
+          </ng-template>
+        </div>
+      </div>
+    </p-sidebar>
+  </div>

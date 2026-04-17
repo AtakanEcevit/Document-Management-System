@@ -1,0 +1,19 @@
+    .app-header{
+      position: sticky; top: 0; z-index: 1000;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 14px rgba(0,0,0,.18);
+    }
+    .container{ max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+    .header-inner{ display:flex; align-items:center; gap:.75rem; }
+    .brand{ font-weight:800; letter-spacing:.3px; user-select:none; }
+    .gradient-text{
+      background: linear-gradient(90deg,#8ab4ff,#7dd3fc,#86efac);
+      -webkit-background-clip:text; background-clip:text; color: transparent;
+    }
+    .nav{ display:flex; gap:.75rem; }
+    .nav a{ text-decoration:none; opacity:.88; padding:.35rem .5rem; border-radius:.5rem; }
+    .nav a.active{ background: rgba(255,255,255,.08); opacity:1; }
+    .gap{ flex:1 1 auto; }
+    main.container{ padding: .75rem 16px; }
